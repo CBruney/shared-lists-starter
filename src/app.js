@@ -86,9 +86,9 @@ const overviewSteps = [
   {
     key: "date",
     title: "Add a due date",
-    cue: "Pick date",
-    pos: "right:6px;top:166px",
-    copy: "Use the calendar control on a task to keep the list ordered by time.",
+    cue: "Tap calendar",
+    pos: "right:5px;top:125px",
+    copy: "Use the calendar icon in the add-item row to set a due date as you create the task.",
   },
   {
     key: "share",
@@ -114,8 +114,8 @@ const overviewSteps = [
   {
     key: "theme",
     title: "Choose a theme",
-    cue: "Open Theme",
-    pos: "bottom:38px;left:18px",
+    cue: "Tap Settings",
+    pos: "bottom:38px;right:5px",
     copy: "Open Settings to use light mode, dark mode, or match system.",
   },
 ];
@@ -1168,6 +1168,8 @@ function renderOverviewDemo() {
   if (!els.overviewDemo) return;
   const step = overviewSteps[state.overviewStepIndex] || overviewSteps[0];
   els.overviewDemo.dataset.overviewStep = step.key;
+  const overviewDialog = els.overviewDemo.querySelector(".overview-demo");
+  if (overviewDialog) overviewDialog.dataset.overviewStep = step.key;
   els.overviewStepLabel.textContent = `Step ${state.overviewStepIndex + 1} of ${overviewSteps.length}`;
   els.overviewStepTitle.textContent = step.title;
   els.overviewStepCopy.textContent = step.copy;

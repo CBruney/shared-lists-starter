@@ -50,6 +50,9 @@ test("PWA shell build caches only safe static assets", async () => {
   assert.match(index, /demo-share/);
   assert.match(index, /demo-done/);
   assert.match(index, /demo-theme/);
+  assert.match(index, /overview-mini-calendar demo-date/);
+  assert.match(index, /Feedback/);
+  assert.match(index, /Settings/);
   assert.match(index, /id="home-screen-guide"/);
   assert.match(index, /Install Shared Lists as an app/);
   assert.match(index, /Install Shared Lists as a WebApp/);
@@ -100,6 +103,8 @@ test("PWA shell build caches only safe static assets", async () => {
   assert.match(sourceApp, /pos: "right:5px;top:94px"/);
   assert.match(sourceApp, /title: "Finish tasks"/);
   assert.match(sourceApp, /title: "Choose a theme"/);
+  assert.match(sourceApp, /cue: "Tap calendar"/);
+  assert.match(sourceApp, /cue: "Tap Settings"/);
   assert.match(sourceApp, /if \(!maybeShowOverviewDemo\(\)\) maybeShowHomeScreenGuide\(\);/);
   assert.match(app, /function installGuideModeForDevice\(/);
   assert.match(app, /function installGuideDescription\(/);
@@ -112,7 +117,9 @@ test("PWA shell build caches only safe static assets", async () => {
   assert.match(sourceStyles, /\.segmented-control/);
   assert.match(sourceStyles, /\.overview-demo/);
   assert.match(sourceStyles, /\.overview-action-callout/);
+  assert.match(sourceStyles, /background:\s*#ffd400/);
   assert.match(sourceStyles, /\.overview-demo\[data-overview-step="share"\] \.demo-share/);
+  assert.match(sourceStyles, /:root\[data-theme="dark"\] \.count-pill/);
   assert.match(sourceStyles, /@keyframes overview-pulse/);
   assert.match(sourceStyles, /\.chrome-address-visual/);
   assert.match(sourceStyles, /\.chrome-install-target/);
@@ -185,8 +192,8 @@ test("PWA shell build caches only safe static assets", async () => {
   assert.doesNotMatch(shell, /<option value=/);
 
   assert.equal((await stat("dist/client/app.js")).size < 145_000, true);
-  assert.equal((await stat("dist/client/styles.css")).size < 54_000, true);
-  assert.equal((await stat("dist/client/index.html")).size < 27_000, true);
+  assert.equal((await stat("dist/client/styles.css")).size < 55_000, true);
+  assert.equal((await stat("dist/client/index.html")).size < 27_500, true);
 
   const cachedShellText = [
     app,
