@@ -370,7 +370,7 @@ test("sharing panel stays focused while settings replays the home screen guide",
   assert.match(html, /Shared Lists overview/);
   assert.match(html, /id="home-screen-guide"/);
   assert.match(html, /desktop-install-steps/);
-  assert.match(html, /Tap the Share button in Safari\./);
+  assert.match(html, /Tap the Share button in your browser\./);
   assert.match(html, /View More/);
   assert.match(html, /Add to Home Screen/);
   assert.match(app, /homeScreenGuideDismissedKey/);

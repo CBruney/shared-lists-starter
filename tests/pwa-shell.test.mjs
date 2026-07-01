@@ -51,7 +51,7 @@ test("PWA shell build caches only safe static assets", async () => {
   assert.match(index, /demo-theme/);
   assert.match(index, /id="home-screen-guide"/);
   assert.match(index, /Install Shared Lists as an app/);
-  assert.match(index, /Tap the Share button in Safari\./);
+  assert.match(index, /Tap the Share button in your browser\./);
   assert.match(index, /View More/);
   assert.match(index, /Add to Home Screen/);
   assert.match(index, /desktop-install-steps/);
