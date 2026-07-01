@@ -377,12 +377,17 @@ test("sharing panel stays focused while settings replays the home screen guide",
   assert.match(app, /overviewDemoDismissedKey/);
   assert.match(app, /function shouldAutoShowOverviewDemo/);
   assert.match(app, /function renderOverviewDemo/);
+  assert.match(app, /overviewDemoClose\.addEventListener\("click", completeOverviewDemo\)/);
+  assert.match(app, /overviewDemoDone\.addEventListener\("click", completeOverviewDemo\)/);
+  assert.match(app, /homeScreenGuideClose\.addEventListener\("click", completeHomeScreenGuide\)/);
+  assert.match(app, /homeScreenGuideDone\.addEventListener\("click", completeHomeScreenGuide\)/);
   assert.match(app, /function shouldOfferHomeScreenGuide/);
   assert.match(app, /function isLikelyIosDevice/);
   assert.match(app, /sharedLists:theme:v1/);
   assert.match(app, /function setThemePreference/);
   assert.match(app, /function installGuideModeForDevice/);
   assert.match(styles, /\.guide-bounce-arrow/);
+  assert.match(styles, /\.guide-close-button\s*\{[\s\S]*z-index:\s*2/);
   assert.match(styles, /\.overview-demo/);
   assert.match(styles, /\.overview-mini-app/);
   assert.match(styles, /@keyframes overview-pulse/);

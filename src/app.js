@@ -358,17 +358,17 @@ function bindEvents() {
     openOverviewDemo({ automatic: false });
   });
   els.overviewDemo.addEventListener("click", (event) => {
-    if (event.target === els.overviewDemo) closeOverviewDemo();
+    if (event.target === els.overviewDemo) completeOverviewDemo();
   });
-  els.overviewDemoClose.addEventListener("click", closeOverviewDemo);
+  els.overviewDemoClose.addEventListener("click", completeOverviewDemo);
   els.overviewDemoBack.addEventListener("click", previousOverviewStep);
   els.overviewDemoNext.addEventListener("click", nextOverviewStep);
-  els.overviewDemoDone.addEventListener("click", closeOverviewDemo);
+  els.overviewDemoDone.addEventListener("click", completeOverviewDemo);
   els.homeScreenGuide.addEventListener("click", (event) => {
-    if (event.target === els.homeScreenGuide) closeHomeScreenGuide();
+    if (event.target === els.homeScreenGuide) completeHomeScreenGuide();
   });
-  els.homeScreenGuideClose.addEventListener("click", closeHomeScreenGuide);
-  els.homeScreenGuideDone.addEventListener("click", closeHomeScreenGuide);
+  els.homeScreenGuideClose.addEventListener("click", completeHomeScreenGuide);
+  els.homeScreenGuideDone.addEventListener("click", completeHomeScreenGuide);
   els.homeScreenGuideLater.addEventListener("click", closeHomeScreenGuide);
   els.activeListTitle.addEventListener("click", handleActiveListTitleClick);
   els.activeListTitle.addEventListener("keydown", handleActiveListTitleKeydown);
@@ -389,8 +389,8 @@ function bindEvents() {
   document.addEventListener("keydown", (event) => {
     if (event.key === "Escape" && state.newListDialogOpen) closeNewListDialog();
     if (event.key === "Escape" && state.settingsDialogOpen) closeSettingsDialog();
-    if (event.key === "Escape" && state.overviewDemoOpen) closeOverviewDemo();
-    if (event.key === "Escape" && state.homeScreenGuideOpen) closeHomeScreenGuide();
+    if (event.key === "Escape" && state.overviewDemoOpen) completeOverviewDemo();
+    if (event.key === "Escape" && state.homeScreenGuideOpen) completeHomeScreenGuide();
     if (event.key === "Escape" && state.detailsSheetOpen) closeDetailsSheet();
     if (event.key === "Escape" && state.detailsPopoverOpen) closeDetailsPopover();
     if (event.key === "Escape" && state.markerPicker.open) closeMarkerPicker();
@@ -1130,6 +1130,10 @@ function closeOverviewDemo({ restoreFocus = true } = {}) {
   else if (isElementVisible(els.mobileListButton)) els.mobileListButton.focus();
 }
 
+function completeOverviewDemo() {
+  closeOverviewDemo();
+}
+
 function nextOverviewStep() {
   setOverviewStep(state.overviewStepIndex + 1);
 }
@@ -1229,6 +1233,10 @@ function closeHomeScreenGuide({ restoreFocus = true } = {}) {
   if (!restoreFocus) return;
   if (isElementVisible(els.settingsButton)) els.settingsButton.focus();
   else if (isElementVisible(els.mobileListButton)) els.mobileListButton.focus();
+}
+
+function completeHomeScreenGuide() {
+  closeHomeScreenGuide();
 }
 
 function bindSystemThemePreference() {
