@@ -368,6 +368,7 @@ test("sharing panel stays focused while settings replays the home screen guide",
   assert.match(html, /Reusable starter: Apache-2\.0/);
   assert.match(html, /id="overview-demo"/);
   assert.match(html, /Shared Lists overview/);
+  assert.match(html, /id="overview-action-callout"/);
   assert.match(html, /id="home-screen-guide"/);
   assert.match(html, /Install Shared Lists as a WebApp/);
   assert.match(html, /desktop-install-steps/);
@@ -380,6 +381,7 @@ test("sharing panel stays focused while settings replays the home screen guide",
   assert.match(app, /overviewDemoDismissedKey/);
   assert.match(app, /function shouldAutoShowOverviewDemo/);
   assert.match(app, /function renderOverviewDemo/);
+  assert.match(app, /overviewActionCallout\.style\.cssText = step\.pos/);
   assert.match(app, /overviewDemoClose\.addEventListener\("click", completeOverviewDemo\)/);
   assert.match(app, /overviewDemoDone\.addEventListener\("click", completeOverviewDemo\)/);
   assert.match(app, /state\.overviewDemoOpen\) completeOverviewDemo\(\)/);
@@ -397,6 +399,7 @@ test("sharing panel stays focused while settings replays the home screen guide",
   assert.match(styles, /\.chrome-install-icon/);
   assert.match(styles, /\.desktop-install-confirm/);
   assert.match(styles, /\.overview-demo/);
+  assert.match(styles, /\.overview-action-callout/);
   assert.match(styles, /\.overview-mini-app/);
   assert.match(styles, /@keyframes overview-pulse/);
   assert.match(styles, /:root\[data-theme="dark"\]/);

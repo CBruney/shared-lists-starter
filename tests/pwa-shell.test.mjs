@@ -46,6 +46,7 @@ test("PWA shell build caches only safe static assets", async () => {
   assert.match(index, /id="overview-demo"/);
   assert.match(index, /Shared Lists overview/);
   assert.match(index, /Create a list/);
+  assert.match(index, /id="overview-action-callout"/);
   assert.match(index, /demo-share/);
   assert.match(index, /demo-done/);
   assert.match(index, /demo-theme/);
@@ -95,6 +96,8 @@ test("PWA shell build caches only safe static assets", async () => {
   assert.match(app, /function maybeShowOverviewDemo\(/);
   assert.match(app, /function openOverviewDemo\(/);
   assert.match(sourceApp, /title: "Share the list"/);
+  assert.match(sourceApp, /cue: "Tap Share"/);
+  assert.match(sourceApp, /pos: "right:5px;top:94px"/);
   assert.match(sourceApp, /title: "Finish tasks"/);
   assert.match(sourceApp, /title: "Choose a theme"/);
   assert.match(sourceApp, /if \(!maybeShowOverviewDemo\(\)\) maybeShowHomeScreenGuide\(\);/);
@@ -108,6 +111,7 @@ test("PWA shell build caches only safe static assets", async () => {
   assert.match(sourceStyles, /\.brand-mark img/);
   assert.match(sourceStyles, /\.segmented-control/);
   assert.match(sourceStyles, /\.overview-demo/);
+  assert.match(sourceStyles, /\.overview-action-callout/);
   assert.match(sourceStyles, /\.overview-demo\[data-overview-step="share"\] \.demo-share/);
   assert.match(sourceStyles, /@keyframes overview-pulse/);
   assert.match(sourceStyles, /\.chrome-address-visual/);

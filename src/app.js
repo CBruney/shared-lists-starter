@@ -72,36 +72,50 @@ const overviewSteps = [
   {
     key: "create",
     title: "Create a list",
+    cue: "Tap +",
+    pos: "right:0;top:42px",
     copy: "Tap the blue plus, name the list, and it appears under Owned by me.",
   },
   {
     key: "task",
     title: "Add a task",
+    cue: "Type here",
+    pos: "right:15px;top:124px",
     copy: "Type what needs doing. Long notes and links can live inside one task.",
   },
   {
     key: "date",
     title: "Add a due date",
+    cue: "Pick date",
+    pos: "right:6px;top:166px",
     copy: "Use the calendar control on a task to keep the list ordered by time.",
   },
   {
     key: "share",
     title: "Share the list",
+    cue: "Tap Share",
+    pos: "right:5px;top:94px",
     copy: "Open Share to add people, allow them to share, or remove access.",
   },
   {
     key: "copy",
     title: "Copy the list link",
+    cue: "Tap Link",
+    pos: "right:68px;top:94px",
     copy: "Use Link when you want to send the list directly in Messages or email.",
   },
   {
     key: "done",
     title: "Finish tasks",
+    cue: "Tap circle",
+    pos: "right:56px;top:213px",
     copy: "Check items off. Completed tasks stay in the archive until deleted.",
   },
   {
     key: "theme",
     title: "Choose a theme",
+    cue: "Open Theme",
+    pos: "bottom:38px;left:18px",
     copy: "Open Settings to use light mode, dark mode, or match system.",
   },
 ];
@@ -243,6 +257,7 @@ const els = {
   overviewStepLabel: document.querySelector("#overview-step-label"),
   overviewStepTitle: document.querySelector("#overview-step-title"),
   overviewStepCopy: document.querySelector("#overview-step-copy"),
+  overviewActionCallout: document.querySelector("#overview-action-callout"),
   overviewDots: document.querySelector("#overview-dots"),
   homeScreenGuide: document.querySelector("#home-screen-guide"),
   homeScreenGuideClose: document.querySelector("#home-screen-guide-close"),
@@ -1156,6 +1171,8 @@ function renderOverviewDemo() {
   els.overviewStepLabel.textContent = `Step ${state.overviewStepIndex + 1} of ${overviewSteps.length}`;
   els.overviewStepTitle.textContent = step.title;
   els.overviewStepCopy.textContent = step.copy;
+  els.overviewActionCallout.textContent = step.cue;
+  els.overviewActionCallout.style.cssText = step.pos;
   els.overviewDemoBack.disabled = state.overviewStepIndex === 0;
   els.overviewDemoNext.textContent = state.overviewStepIndex === overviewSteps.length - 1 ? "Start over" : "Next";
   els.overviewDots.innerHTML = overviewSteps.map((item, index) => (

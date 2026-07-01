@@ -2180,7 +2180,6 @@ body.details-popover-open .details-panel {
   display: grid;
   gap: 14px;
   grid-template-columns: minmax(0, 1.08fr) minmax(220px, 0.92fr);
-  align-items: stretch;
 }
 
 .overview-visual {
@@ -2203,6 +2202,7 @@ body.details-popover-open .details-panel {
   gap: 9px;
   max-width: 315px;
   padding: 10px;
+  position: relative;
   width: 100%;
 }
 
@@ -2279,8 +2279,7 @@ body.details-popover-open .details-panel {
 .overview-mini-footer span {
   border: 1px solid transparent;
   border-radius: 7px;
-  min-width: 0;
-  transition: background 160ms ease, border-color 160ms ease, box-shadow 160ms ease, color 160ms ease, transform 160ms ease;
+  transition: all 160ms ease;
 }
 
 .overview-mini-list {
@@ -2405,7 +2404,6 @@ body.details-popover-open .details-panel {
   color: var(--muted);
   font-size: 11px;
   font-weight: 800;
-  letter-spacing: 0;
   margin: 0;
   text-transform: uppercase;
 }
@@ -2473,6 +2471,15 @@ body.details-popover-open .details-panel {
 .overview-demo[data-overview-step="create"] .demo-create-plus {
   background: var(--blue);
   color: #ffffff;
+}
+
+.overview-action-callout {
+  background: var(--blue);
+  border-radius: 9px;
+  color: #ffffff;
+  font-size: 11px;
+  padding: 7px 9px;
+  position: absolute;
 }
 
 .desktop-install-title {
