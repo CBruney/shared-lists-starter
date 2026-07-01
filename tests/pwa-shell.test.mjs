@@ -158,9 +158,11 @@ test("PWA shell build caches only safe static assets", async () => {
   assert.doesNotMatch(license, />Back to Shared Lists</);
   assert.match(license, /Apache License 2\.0/);
   assert.match(license, /Current starter version: <strong>v0\.1\.0<\/strong>/);
-  assert.match(license, /public starter is not published yet/);
-  assert.match(license, /https:\/\/github\.com\/public-maintainer\/shared-lists\/tree\/main\/oss\/projects\/shared-lists/);
-  assert.match(license, /npm run export:public -- --out \.public-projects\/shared-lists/);
+  assert.match(license, /The public starter lives at/);
+  assert.match(license, /https:\/\/github\.com\/CBruney\/shared-lists-starter/);
+  assert.doesNotMatch(license, /public starter is not published yet/);
+  assert.match(license, /Clone the public starter repo to build your own version/);
+  assert.doesNotMatch(license, /npm run export:public/);
   assert.match(license, /https:\/\/www\.apache\.org\/licenses\/LICENSE-2\.0/);
 
   const shell = await readFile("dist/client/shell.html", "utf8");
