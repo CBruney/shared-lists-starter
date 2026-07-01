@@ -4,6 +4,7 @@ import { extname, join, normalize } from "node:path";
 import { fileURLToPath } from "node:url";
 import { MemoryStore } from "../src/lib/shared-lists-core.mjs";
 import { routeApiRequest } from "../src/lib/api-router.mjs";
+import { googleContactsConfig } from "../src/lib/google-contacts.mjs";
 
 const root = fileURLToPath(new URL("..", import.meta.url));
 const clientRoot = join(root, "src");
@@ -26,6 +27,9 @@ const server = createServer(async (req, res) => {
       const response = await routeApiRequest(request, {
         store,
         currentUserEmail: req.headers["x-dev-user-email"] || defaultDevUserEmail,
+        privateContactsConfig: {
+          google: googleContactsConfig(process.env),
+        },
       });
       await sendWebResponse(res, response);
       return;

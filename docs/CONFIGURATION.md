@@ -15,7 +15,8 @@ Use config files and environment variables for setup. Avoid source edits for nor
   "features": {
     "quickActionBridge": false,
     "accessAudit": false,
-    "peopleImport": false
+    "peopleImport": false,
+    "privateGoogleContacts": false
   },
   "quickActionBridge": {
     "allowedOrigins": []
@@ -46,6 +47,11 @@ ACCESS_AUDIT_ADMINS=
 ENABLE_PEOPLE_IMPORT=false
 QUICK_ACTION_INTEGRATION_ENABLED=false
 QUICK_ACTION_INTEGRATION_ORIGINS=
+GOOGLE_CONTACTS_ENABLED=false
+GOOGLE_CONTACTS_CLIENT_ID=
+GOOGLE_CONTACTS_CLIENT_SECRET=
+GOOGLE_CONTACTS_TOKEN_SECRET=
+GOOGLE_CONTACTS_MAX_CONTACTS=2000
 CLOUDFLARE_ACCESS_TEAM_DOMAIN=
 CLOUDFLARE_ACCESS_AUD=
 ```
@@ -63,8 +69,11 @@ Use `cloudflare-access` for Cloudflare Workers protected by Cloudflare Access.
 - `ENABLE_ACCESS_AUDIT`: exposes the admin access-audit endpoint when set to `true`.
 - `ENABLE_PEOPLE_IMPORT`: exposes the admin people-import page and API when set to `true`.
 - `QUICK_ACTION_INTEGRATION_ENABLED`: exposes the generic quick-action integration when set to `true`.
+- `GOOGLE_CONTACTS_ENABLED`: exposes optional per-user Google Contacts autocomplete when set to `true` and when `features.privateGoogleContacts` is also `true`.
 
 Keep optional features off until you know you need them.
+
+See [`PRIVATE_CONTACTS.md`](PRIVATE_CONTACTS.md) for the Google Contacts privacy and setup model.
 
 ## Public Repo Rule
 

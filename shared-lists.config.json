@@ -6,7 +6,8 @@
   "features": {
     "quickActionBridge": false,
     "accessAudit": false,
-    "peopleImport": false
+    "peopleImport": false,
+    "privateGoogleContacts": false
   },
   "quickActionBridge": {
     "allowedOrigins": []

@@ -224,6 +224,74 @@ test("session returns identity, bootstrap persists users, and people search stay
   assert.equal(index.payload.people.some((person) => person.search_terms.includes("directory-person")), true);
 });
 
+test("private Google Contacts autocomplete is optional and scoped to the signed-in user", async () => {
+  const store = new MemoryStore({
+    users: ["admin@local.test", "other@local.test", "known-person@local.test"],
+  });
+  await store.replacePrivateContacts("admin@local.test", "google", [
+    {
+      email: "private-friend@contacts.test",
+      display_name: "Private Friend",
+      search_terms: ["Ohio Food"],
+    },
+  ], { syncedAt: "2026-07-01T10:00:00.000Z" });
+
+  const disabledStatus = await call(store, "/api/contacts/google/status", { user: "admin@local.test" });
+  assert.equal(disabledStatus.status, 200);
+  assert.equal(disabledStatus.payload.optional, true);
+  assert.equal(disabledStatus.payload.available, false);
+
+  const disabledSearch = await call(store, "/api/people?q=private", { user: "admin@local.test" });
+  assert.equal(disabledSearch.status, 200);
+  assert.equal(disabledSearch.payload.people.some((person) => person.email === "private-friend@contacts.test"), false);
+
+  const contactsOptions = {
+    privateContactsConfig: {
+      google: {
+        enabled: true,
+        clientId: "google-client-id",
+        clientSecret: "google-client-secret",
+        tokenSecret: "google-contact-token-secret",
+      },
+    },
+  };
+  const enabledStatus = await call(store, "/api/contacts/google/status", {
+    user: "admin@local.test",
+    routeOptions: contactsOptions,
+  });
+  assert.equal(enabledStatus.status, 200);
+  assert.equal(enabledStatus.payload.available, true);
+  assert.equal(enabledStatus.payload.source.contact_count, 1);
+
+  const ownerSearch = await call(store, "/api/people?q=Ohio", {
+    user: "admin@local.test",
+    routeOptions: contactsOptions,
+  });
+  assert.equal(ownerSearch.status, 200);
+  assert.equal(ownerSearch.payload.people[0].email, "private-friend@contacts.test");
+  assert.equal(ownerSearch.payload.people[0].private, true);
+  assert.equal(ownerSearch.payload.people[0].source_label, "Your Google contacts");
+
+  const otherSearch = await call(store, "/api/people?q=Ohio", {
+    user: "other@local.test",
+    routeOptions: contactsOptions,
+  });
+  assert.equal(otherSearch.status, 200);
+  assert.equal(otherSearch.payload.people.some((person) => person.email === "private-friend@contacts.test"), false);
+
+  const ownerIndex = await call(store, "/api/people/index", {
+    user: "admin@local.test",
+    routeOptions: contactsOptions,
+  });
+  assert.equal(ownerIndex.payload.people.some((person) => person.email === "private-friend@contacts.test"), true);
+
+  const otherIndex = await call(store, "/api/people/index", {
+    user: "other@local.test",
+    routeOptions: contactsOptions,
+  });
+  assert.equal(otherIndex.payload.people.some((person) => person.email === "private-friend@contacts.test"), false);
+});
+
 test("owner-only people import enriches existing users and searches full names and Slack aliases", async () => {
   const store = new MemoryStore({ users: ["admin@local.test", "profile-member@local.test"] });
   const peopleImportOptions = { peopleImportEnabled: true, adminEmails: new Set(["admin@local.test"]) };

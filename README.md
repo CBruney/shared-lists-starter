@@ -62,7 +62,8 @@ Edit `shared-lists.config.json` for user-visible and client-side settings:
   "features": {
     "quickActionBridge": false,
     "accessAudit": false,
-    "peopleImport": false
+    "peopleImport": false,
+    "privateGoogleContacts": false
   },
   "quickActionBridge": {
     "allowedOrigins": []
@@ -70,7 +71,7 @@ Edit `shared-lists.config.json` for user-visible and client-side settings:
 }
 ```
 
-Use host environment variables for server-side settings. Start with `.env.example`; do not commit real secrets or private deployment IDs. Optional admin and integration surfaces, including access audit, people import, and quick-action intake, are disabled by config until you turn them on.
+Use host environment variables for server-side settings. Start with `.env.example`; do not commit real secrets or private deployment IDs. Optional admin and integration surfaces, including access audit, people import, quick-action intake, and private Google Contacts autocomplete, are disabled by config until you turn them on.
 
 Set `publicUrl` and `feedbackEmail` only when you have real values. If `feedbackEmail` is empty, the app hides the Feedback button.
 
@@ -148,6 +149,10 @@ The app shell can be public. Lists are not public by default. The API checks the
 ### How do I share one list quickly?
 
 Open the list, tap Share, add the person's email, then copy or send the list link. A person who is not on that list sees no list data.
+
+### Can sharing autocomplete use my contacts?
+
+Optionally, yes. Private Google Contacts autocomplete is off by default. If a deployer enables it and a user connects their own Google account in Settings, only that user sees those private suggestions. Everyone can still share by typing a full email address.
 
 ### Can a member add other people?
 

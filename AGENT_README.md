@@ -43,7 +43,7 @@ Edit these files for ordinary setup:
 - `wrangler.toml`: Cloudflare Worker, D1, and Access deployment metadata.
 
 Do not edit `src/app.js`, `src/worker.js`, or the store layer just to change the first owner, host, feedback email, or auth provider.
-Do not enable optional features such as access audit, people import, or quick-action intake unless the user asks for them.
+Do not enable optional features such as access audit, people import, quick-action intake, or private Google Contacts autocomplete unless the user asks for them.
 
 ## Pick One Deployment Lane
 

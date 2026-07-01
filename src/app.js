@@ -60,6 +60,7 @@ const homeScreenGuideDismissedKey = "sharedLists:homeScreenGuideDismissed:v1";
 const themePreferenceKey = "sharedLists:theme:v1";
 const authRefreshParam = "__sl_auth";
 const listLinkParam = "list";
+const contactsParam = "contacts";
 const signInPath = "/signin-with-chatgpt";
 const signOutPath = "/signout-with-chatgpt";
 const quickActionParam = "quick_action";
@@ -156,6 +157,16 @@ const state = {
     loaded: false,
     loadedAt: 0,
   },
+  googleContacts: {
+    available: false,
+    connected: false,
+    loading: false,
+    syncing: false,
+    checked: false,
+    contactCount: 0,
+    lastSyncedAt: null,
+    error: "",
+  },
   invite: {
     listId: "",
     email: "",
@@ -248,6 +259,11 @@ const els = {
   showHomeScreenGuideButton: document.querySelector("#show-home-screen-guide-button"),
   installAppSettingsDescription: document.querySelector("#install-app-settings-description"),
   showOverviewDemoButton: document.querySelector("#show-overview-demo-button"),
+  googleContactsSettingsRow: document.querySelector("#google-contacts-settings-row"),
+  googleContactsSettingsDescription: document.querySelector("#google-contacts-settings-description"),
+  googleContactsConnectButton: document.querySelector("#google-contacts-connect-button"),
+  googleContactsSyncButton: document.querySelector("#google-contacts-sync-button"),
+  googleContactsDisconnectButton: document.querySelector("#google-contacts-disconnect-button"),
   overviewDemo: document.querySelector("#overview-demo"),
   overviewDemoClose: document.querySelector("#overview-demo-close"),
   overviewDemoBack: document.querySelector("#overview-demo-back"),
@@ -302,6 +318,7 @@ async function init() {
   registerShellServiceWorker();
   const sessionConfirmation = state.authConfirmed ? Promise.resolve() : confirmSessionAndHydrateFastSurface();
   await Promise.all([bootstrapApp(), sessionConfirmation]);
+  handleGoogleContactsReturnParam();
   await handleQuickActionBridge();
   if (!maybeShowOverviewDemo()) maybeShowHomeScreenGuide();
 }
@@ -370,6 +387,9 @@ function bindEvents() {
     closeSettingsDialog({ restoreFocus: false });
     openOverviewDemo({ automatic: false });
   });
+  els.googleContactsConnectButton?.addEventListener("click", connectGoogleContacts);
+  els.googleContactsSyncButton?.addEventListener("click", syncGoogleContacts);
+  els.googleContactsDisconnectButton?.addEventListener("click", disconnectGoogleContacts);
   els.overviewDemo.addEventListener("click", (event) => {
     if (event.target === els.overviewDemo) {
       completeOverviewDemo();
@@ -698,6 +718,7 @@ function setSessionUser(user, { confirmed = true } = {}) {
   }
   els.currentUserLabel.textContent = state.session?.email || "Unknown user";
   preparePeopleIndexForUser(state.session?.email);
+  prepareGoogleContactsForUser(state.session?.email);
 }
 
 async function refreshLists({ groups = null, activeDetail = null, deferMobileDetail = false, requestedListId = state.pendingListLinkId } = {}) {
@@ -877,6 +898,16 @@ function writePeopleIndexCache(email, entries) {
   }
 }
 
+function clearPeopleIndexCache(email) {
+  const normalized = normalizeEmail(email);
+  if (!normalized) return;
+  try {
+    window.localStorage.removeItem(peopleIndexCacheKey(normalized));
+  } catch {
+    // Cache clearing is best-effort; the server remains the source of truth.
+  }
+}
+
 function preparePeopleIndexForUser(email) {
   const normalized = normalizeEmail(email);
   if (!normalized || state.peopleIndex.email === normalized) return;
@@ -888,6 +919,16 @@ function preparePeopleIndexForUser(email) {
     loadedAt: cached?.loadedAt || 0,
   };
   prefetchPeopleIndex({ force: true }).catch(() => {});
+}
+
+function prepareGoogleContactsForUser(email) {
+  const normalized = normalizeEmail(email);
+  if (!normalized) {
+    state.googleContacts = defaultGoogleContactsState();
+    return;
+  }
+  if (state.googleContacts.email === normalized) return;
+  state.googleContacts = { ...defaultGoogleContactsState(), email: normalized };
 }
 
 function prefetchPeopleIndex({ force = false } = {}) {
@@ -1095,6 +1136,7 @@ function closeNewListDialog({ restoreFocus = true } = {}) {
 function openSettingsDialog() {
   state.settingsDialogOpen = true;
   renderShellState();
+  maybeLoadGoogleContactsStatus();
   window.requestAnimationFrame(() => els.settingsCloseButton.focus());
 }
 
@@ -1245,6 +1287,255 @@ function closeHomeScreenGuide({ restoreFocus = true } = {}) {
 
 function completeHomeScreenGuide() {
   closeHomeScreenGuide();
+}
+
+function stopOverviewDemoTimer() {
+  // The overview now advances only when the user clicks; keep this as a harmless cleanup hook.
+}
+
+function defaultGoogleContactsState() {
+  return {
+    email: "",
+    available: false,
+    connected: false,
+    loading: false,
+    syncing: false,
+    checked: false,
+    contactCount: 0,
+    lastSyncedAt: null,
+    error: "",
+  };
+}
+
+function privateGoogleContactsEnabled() {
+  return appConfig.features.privateGoogleContacts === true;
+}
+
+function maybeLoadGoogleContactsStatus() {
+  if (!privateGoogleContactsEnabled() || state.authRequired || !state.session?.email) {
+    state.googleContacts = { ...defaultGoogleContactsState(), email: normalizeEmail(state.session?.email) };
+    renderGoogleContactsSettings();
+    return;
+  }
+  if (state.googleContacts.checked || state.googleContacts.loading) {
+    renderGoogleContactsSettings();
+    return;
+  }
+  loadGoogleContactsStatus({ quiet: true }).catch(() => {});
+}
+
+async function loadGoogleContactsStatus({ quiet = false } = {}) {
+  if (!privateGoogleContactsEnabled() || state.authRequired || !state.session?.email) return null;
+  state.googleContacts = {
+    ...state.googleContacts,
+    email: normalizeEmail(state.session.email),
+    loading: true,
+    error: "",
+  };
+  renderGoogleContactsSettings();
+  try {
+    const data = await apiFetch("/api/contacts/google/status");
+    applyGoogleContactsStatus(data);
+    return data;
+  } catch (error) {
+    state.googleContacts = {
+      ...state.googleContacts,
+      available: false,
+      connected: false,
+      loading: false,
+      syncing: false,
+      checked: true,
+      error: error.message || "Google Contacts are unavailable",
+    };
+    renderGoogleContactsSettings();
+    if (!quiet) showToast(state.googleContacts.error);
+    return null;
+  }
+}
+
+function applyGoogleContactsStatus(data = {}) {
+  const source = data.source || {};
+  state.googleContacts = {
+    ...state.googleContacts,
+    available: data.available === true,
+    connected: source.connected === true,
+    loading: false,
+    syncing: false,
+    checked: true,
+    contactCount: Number(source.contact_count || 0),
+    lastSyncedAt: source.last_synced_at || null,
+    error: source.error_message || "",
+  };
+  renderGoogleContactsSettings();
+}
+
+function renderGoogleContactsSettings() {
+  if (!els.googleContactsSettingsRow) return;
+  const contacts = state.googleContacts;
+  const showRow = privateGoogleContactsEnabled()
+    && Boolean(state.session?.email)
+    && !state.authRequired
+    && contacts.checked
+    && (contacts.available || contacts.connected);
+  els.googleContactsSettingsRow.hidden = !showRow;
+  if (!showRow) return;
+
+  const busy = contacts.loading || contacts.syncing;
+  const connected = contacts.connected;
+  els.googleContactsConnectButton.hidden = connected;
+  els.googleContactsSyncButton.hidden = !connected;
+  els.googleContactsDisconnectButton.hidden = !connected;
+  els.googleContactsConnectButton.disabled = busy || !contacts.available;
+  els.googleContactsSyncButton.disabled = busy || !contacts.available;
+  els.googleContactsDisconnectButton.disabled = busy;
+
+  if (!contacts.available && connected) {
+    els.googleContactsSettingsDescription.textContent = "Private autocomplete is paused until Google sync is configured";
+  } else if (contacts.syncing) {
+    els.googleContactsSettingsDescription.textContent = "Syncing your private suggestions...";
+  } else if (contacts.loading) {
+    els.googleContactsSettingsDescription.textContent = "Checking private autocomplete...";
+  } else if (contacts.error) {
+    els.googleContactsSettingsDescription.textContent = contacts.error;
+  } else if (connected) {
+    const synced = contacts.lastSyncedAt ? ` Synced ${formatShortDateTime(contacts.lastSyncedAt)}.` : "";
+    els.googleContactsSettingsDescription.textContent = `${contacts.contactCount} ${plural(contacts.contactCount, "private contact", "private contacts")} available.${synced}`;
+  } else {
+    els.googleContactsSettingsDescription.textContent = "Optional. Only you see these autocomplete suggestions.";
+  }
+}
+
+async function connectGoogleContacts() {
+  if (!privateGoogleContactsEnabled() || !state.session?.email) return;
+  state.googleContacts = { ...state.googleContacts, loading: true, error: "" };
+  renderGoogleContactsSettings();
+  try {
+    const data = await apiFetch("/api/contacts/google/connect", {
+      method: "POST",
+      body: { redirect_to: currentGoogleContactsReturnPath() },
+    });
+    if (!data.authorization_url) throw new Error("Google Contacts did not return a sign-in link");
+    window.location.href = data.authorization_url;
+  } catch (error) {
+    state.googleContacts = { ...state.googleContacts, loading: false, checked: true, error: error.message };
+    renderGoogleContactsSettings();
+    showToast(error.message || "Could not connect Google Contacts");
+  }
+}
+
+async function syncGoogleContacts() {
+  if (!privateGoogleContactsEnabled() || !state.session?.email) return;
+  state.googleContacts = { ...state.googleContacts, syncing: true, error: "" };
+  renderGoogleContactsSettings();
+  try {
+    const result = await apiFetch("/api/contacts/google/sync", { method: "POST" });
+    applyPrivateContactsToPeopleIndex(result.contacts || []);
+    state.googleContacts = {
+      ...state.googleContacts,
+      connected: true,
+      available: true,
+      checked: true,
+      syncing: false,
+      contactCount: Number(result.contact_count || (result.contacts || []).length),
+      lastSyncedAt: new Date().toISOString(),
+      error: "",
+    };
+    renderGoogleContactsSettings();
+    prefetchPeopleIndex({ force: true }).catch(() => {});
+    showToast("Google Contacts synced");
+  } catch (error) {
+    state.googleContacts = { ...state.googleContacts, syncing: false, checked: true, error: error.message };
+    renderGoogleContactsSettings();
+    showToast(error.message || "Could not sync Google Contacts");
+  }
+}
+
+async function disconnectGoogleContacts() {
+  if (!privateGoogleContactsEnabled() || !state.session?.email) return;
+  if (!window.confirm("Disconnect private Google Contacts autocomplete for your account?")) return;
+  state.googleContacts = { ...state.googleContacts, syncing: true, error: "" };
+  renderGoogleContactsSettings();
+  try {
+    const data = await apiFetch("/api/contacts/google", { method: "DELETE" });
+    applyGoogleContactsStatus({ available: true, source: data.source || { connected: false } });
+    removePrivateContactsFromPeopleIndex();
+    showToast("Google Contacts disconnected");
+  } catch (error) {
+    state.googleContacts = { ...state.googleContacts, syncing: false, checked: true, error: error.message };
+    renderGoogleContactsSettings();
+    showToast(error.message || "Could not disconnect Google Contacts");
+  }
+}
+
+function applyPrivateContactsToPeopleIndex(contacts = []) {
+  const email = normalizeEmail(state.session?.email);
+  if (!email || !Array.isArray(contacts)) return;
+  const merged = mergePeopleIndexEntries(
+    state.peopleIndex.entries.filter((person) => !person.private),
+    contacts,
+  );
+  state.peopleIndex = { email, entries: merged, loaded: true, loadedAt: Date.now() };
+  writePeopleIndexCache(email, merged);
+}
+
+function removePrivateContactsFromPeopleIndex() {
+  const email = normalizeEmail(state.session?.email);
+  if (!email) return;
+  const entries = state.peopleIndex.entries.filter((person) => !person.private);
+  state.peopleIndex = { email, entries, loaded: true, loadedAt: Date.now() };
+  clearPeopleIndexCache(email);
+  writePeopleIndexCache(email, entries);
+  if (state.people.query.length >= 2) applyPeopleIndexSuggestions(state.people.query);
+}
+
+function mergePeopleIndexEntries(...groups) {
+  const byEmail = new Map();
+  for (const person of groups.flat()) {
+    const email = normalizeEmail(person?.email);
+    if (!email) continue;
+    const existing = byEmail.get(email);
+    if (!existing) {
+      byEmail.set(email, { ...person, email });
+      continue;
+    }
+    byEmail.set(email, {
+      ...person,
+      ...existing,
+      search_terms: [...new Set([...(existing.search_terms || []), ...(person.search_terms || [])])],
+      source: existing.source || person.source,
+      source_label: existing.source_label || person.source_label,
+      private: Boolean(existing.private || person.private),
+    });
+  }
+  return [...byEmail.values()];
+}
+
+function handleGoogleContactsReturnParam() {
+  const url = new URL(window.location.href);
+  const status = url.searchParams.get(contactsParam);
+  if (!status) return;
+  url.searchParams.delete(contactsParam);
+  window.history.replaceState({}, "", `${url.pathname}${url.search}${url.hash}`);
+  if (status === "connected") {
+    showToast("Google Contacts connected");
+    state.googleContacts.checked = false;
+    loadGoogleContactsStatus({ quiet: true }).then(() => prefetchPeopleIndex({ force: true }).catch(() => {}));
+  }
+}
+
+function currentGoogleContactsReturnPath() {
+  return `${window.location.pathname}${window.location.search}${window.location.hash}` || "/";
+}
+
+function formatShortDateTime(value) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  return new Intl.DateTimeFormat(undefined, {
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  }).format(date);
 }
 
 function bindSystemThemePreference() {
@@ -1928,7 +2219,13 @@ function searchPeopleIndex(query) {
       return String(a.display_name || a.email).localeCompare(String(b.display_name || b.email));
     })
     .slice(0, peopleSearchLimit)
-    .map(({ email, display_name }) => ({ email, display_name }));
+    .map(({ email, display_name, source, source_label, private: privateContact }) => ({
+      email,
+      display_name,
+      source,
+      source_label,
+      private: privateContact === true,
+    }));
 }
 
 function peopleSearchTerms(person) {
@@ -2024,6 +2321,7 @@ function renderPeopleSuggestions() {
       >
         <strong>${escapeHtml(person.display_name || displayNameFromEmail(person.email))}</strong>
         <span>${escapeHtml(person.email)}</span>
+        ${person.private && person.source_label ? `<span class="people-source">${escapeHtml(person.source_label)}</span>` : ""}
       </button>
     `)
     .join("");
@@ -2434,6 +2732,7 @@ function renderShellState() {
   if (state.overviewDemoOpen) renderOverviewDemo();
   renderThemePreference();
   renderSettingsAuthAction();
+  renderGoogleContactsSettings();
 }
 
 function renderThemePreference() {
@@ -5329,6 +5628,7 @@ function normalizeSharedListsConfig(value = {}) {
       quickActionBridge: features.quickActionBridge === true,
       accessAudit: features.accessAudit === true,
       peopleImport: features.peopleImport === true,
+      privateGoogleContacts: features.privateGoogleContacts === true,
     },
     quickActionBridge: {
       allowedOrigins: Array.isArray(quickAction.allowedOrigins)

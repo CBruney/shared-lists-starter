@@ -85,6 +85,13 @@
       "when": 1782419400000,
       "tag": "0011_user_profiles",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1782900000000,
+      "tag": "0012_private_google_contacts",
+      "breakpoints": true
     }
   ]
 }

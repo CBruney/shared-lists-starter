@@ -1,5 +1,6 @@
 import { routeApiRequest } from "./lib/api-router.mjs";
 import { D1Store } from "./lib/d1-store.mjs";
+import { googleContactsConfig } from "./lib/google-contacts.mjs";
 import { resolveCurrentUserEmailFromRequest } from "./lib/request-identity.mjs";
 
 export default {
@@ -20,6 +21,9 @@ export default {
         peopleImportEnabled: env.ENABLE_PEOPLE_IMPORT === "true",
         quickActionIntegrationEnabled: env.QUICK_ACTION_INTEGRATION_ENABLED === "true",
         quickActionIntegrationOrigins: env.QUICK_ACTION_INTEGRATION_ORIGINS,
+        privateContactsConfig: {
+          google: googleContactsConfig(env),
+        },
         logger: logApiEvent,
         defer: backgroundDefer(context),
       });
@@ -47,6 +51,9 @@ export default {
         peopleImportEnabled: env.ENABLE_PEOPLE_IMPORT === "true",
         quickActionIntegrationEnabled: env.QUICK_ACTION_INTEGRATION_ENABLED === "true",
         quickActionIntegrationOrigins: env.QUICK_ACTION_INTEGRATION_ORIGINS,
+        privateContactsConfig: {
+          google: googleContactsConfig(env),
+        },
         logger: logApiEvent,
         defer: backgroundDefer(context),
       });

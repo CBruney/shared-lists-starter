@@ -68,6 +68,9 @@ The schema stores:
 - `list_access_requests`
 - `idempotency_keys`
 - `task_external_refs`
+- `user_contact_sources`
+- `user_contacts`
+- `contact_oauth_states`
 
 Apply migrations before production use.
 
@@ -76,3 +79,5 @@ Apply migrations before production use.
 Optional features should be enabled by config or environment variables, not by editing app source.
 
 The public starter defaults to a plain shared-list app. Private integrations belong in adapters, forks, or host-specific config.
+
+Private Google Contacts autocomplete is optional. When enabled, contact data is scoped by signed-in user and merged into that user’s autocomplete results only.

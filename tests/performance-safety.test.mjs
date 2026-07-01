@@ -11,6 +11,7 @@ test("hot path indexes are captured in D1 schema and migrations", async () => {
   const accessRequestsMigration = await readFile("drizzle/0008_access_requests.sql", "utf8");
   const taskSortOrderMigration = await readFile("drizzle/0009_task_sort_order.sql", "utf8");
   const userProfilesMigration = await readFile("drizzle/0011_user_profiles.sql", "utf8");
+  const privateContactsMigration = await readFile("drizzle/0012_private_google_contacts.sql", "utf8");
   const store = await readFile("src/lib/d1-store.mjs", "utf8");
 
   for (const indexName of [
@@ -21,8 +22,10 @@ test("hot path indexes are captured in D1 schema and migrations", async () => {
     "idx_list_access_requests_list_status",
     "idx_list_access_requests_requester_status",
     "idx_tasks_open_list_sort_order",
+    "idx_user_contacts_owner_provider_name",
+    "idx_contact_oauth_states_expires",
   ]) {
-    assert.match(`${migration}\n${accessRequestsMigration}\n${taskSortOrderMigration}`, new RegExp(indexName));
+    assert.match(`${migration}\n${accessRequestsMigration}\n${taskSortOrderMigration}\n${privateContactsMigration}`, new RegExp(indexName));
     assert.match(store, new RegExp(indexName));
   }
   assert.match(revisionsMigration, /ALTER TABLE lists ADD COLUMN revision/);
@@ -39,7 +42,12 @@ test("hot path indexes are captured in D1 schema and migrations", async () => {
   assert.match(taskSortOrderMigration, /ROW_NUMBER\(\) OVER/);
   assert.match(userProfilesMigration, /ALTER TABLE users ADD COLUMN full_name/);
   assert.match(userProfilesMigration, /ALTER TABLE users ADD COLUMN aliases_json/);
+  assert.match(privateContactsMigration, /CREATE TABLE IF NOT EXISTS user_contact_sources/);
+  assert.match(privateContactsMigration, /CREATE TABLE IF NOT EXISTS user_contacts/);
+  assert.match(privateContactsMigration, /CREATE TABLE IF NOT EXISTS contact_oauth_states/);
   assert.match(store, /profile_synced_at TEXT/);
+  assert.match(store, /searchPrivateContacts/);
+  assert.match(store, /getPrivateContactIndex/);
   assert.doesNotMatch(store, /ON CONFLICT\(email\) DO UPDATE SET\s*display_name = excluded\.display_name,\s*updated_at = CURRENT_TIMESTAMP/);
   assert.match(store, /ALTER TABLE list_members ADD COLUMN marker_color/);
   assert.match(store, /ALTER TABLE list_members ADD COLUMN marker_icon/);
@@ -148,6 +156,7 @@ test("people autocomplete preloads an identity-scoped index and filters without 
   const app = await readFile("src/app.js", "utf8");
   const router = await readFile("src/lib/api-router.mjs", "utf8");
   const store = await readFile("src/lib/d1-store.mjs", "utf8");
+  const config = await readFile("shared-lists.config.json", "utf8");
 
   assert.match(app, /const peopleIndexCacheMaxAgeMs = 24 \* 60 \* 60 \* 1000/);
   assert.match(app, /preparePeopleIndexForUser\(state\.session\?\.email\)/);
@@ -157,6 +166,12 @@ test("people autocomplete preloads an identity-scoped index and filters without 
   assert.doesNotMatch(app, /fetchPeopleSuggestions\(query\), 140/);
   assert.match(router, /path === "\/api\/people\/index"/);
   assert.match(store, /async getPeopleIndex\(\)/);
+  assert.match(config, /"privateGoogleContacts": false/);
+  assert.match(app, /function privateGoogleContactsEnabled\(\)/);
+  assert.match(app, /Optional\. Only you see these autocomplete suggestions\./);
+  assert.match(app, /\/api\/contacts\/google\/status/);
+  assert.match(router, /privateContactsConfigured\(privateContactsConfig\)/);
+  assert.match(router, /store\.getPrivateContactIndex\(userEmail\)/);
 });
 
 test("production reads skip runtime schema migration work", async () => {

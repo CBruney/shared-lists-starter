@@ -3,6 +3,7 @@ import {
   DEFAULT_LIST_MARKER_COLOR,
   DEFAULT_LIST_MARKER_ICON,
   accessRequestView,
+  contactSourceView,
   displayNameFromEmail,
   listSummaryFromRecord,
   memberView,
@@ -14,11 +15,15 @@ import {
   normalizeExpectedRevision,
   normalizePeopleProfileBatch,
   normalizePeopleQuery,
+  normalizePrivateContactBatch,
   partitionLists,
+  PRIVATE_CONTACT_INDEX_LIMIT,
   PEOPLE_SEARCH_LIMIT,
   peopleIndexView,
   peopleProfileAdminView,
   peopleSearchView,
+  privateContactIndexView,
+  privateContactSearchView,
   requireValidEmail,
   taskView,
   validateListTitle,
@@ -122,6 +127,42 @@ const SCHEMA = [
     FOREIGN KEY (requester_email) REFERENCES users(email),
     FOREIGN KEY (resolved_by_email) REFERENCES users(email)
   )`,
+  `CREATE TABLE IF NOT EXISTS user_contact_sources (
+    owner_email TEXT NOT NULL,
+    provider TEXT NOT NULL,
+    encrypted_refresh_token TEXT,
+    account_email TEXT,
+    contact_count INTEGER NOT NULL DEFAULT 0,
+    sync_token TEXT,
+    last_synced_at TEXT,
+    sync_status TEXT NOT NULL DEFAULT 'idle',
+    error_message TEXT NOT NULL DEFAULT '',
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (owner_email, provider),
+    FOREIGN KEY (owner_email) REFERENCES users(email)
+  )`,
+  `CREATE TABLE IF NOT EXISTS user_contacts (
+    owner_email TEXT NOT NULL,
+    provider TEXT NOT NULL,
+    provider_contact_id TEXT NOT NULL,
+    email TEXT NOT NULL,
+    display_name TEXT NOT NULL,
+    search_terms_json TEXT NOT NULL DEFAULT '[]',
+    synced_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (owner_email, provider, email),
+    FOREIGN KEY (owner_email) REFERENCES users(email)
+  )`,
+  `CREATE TABLE IF NOT EXISTS contact_oauth_states (
+    state TEXT PRIMARY KEY NOT NULL,
+    owner_email TEXT NOT NULL,
+    provider TEXT NOT NULL,
+    code_verifier TEXT NOT NULL,
+    redirect_to TEXT NOT NULL DEFAULT '/',
+    expires_at TEXT NOT NULL,
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (owner_email) REFERENCES users(email)
+  )`,
   `CREATE INDEX IF NOT EXISTS idx_lists_owner_email ON lists(owner_email)`,
   `CREATE INDEX IF NOT EXISTS idx_list_members_email ON list_members(email)`,
   `CREATE INDEX IF NOT EXISTS idx_list_members_email_list ON list_members(email, list_id)`,
@@ -134,6 +175,8 @@ const SCHEMA = [
   `CREATE INDEX IF NOT EXISTS idx_task_external_refs_list ON task_external_refs(list_id)`,
   `CREATE INDEX IF NOT EXISTS idx_list_access_requests_list_status ON list_access_requests(list_id, status, created_at)`,
   `CREATE INDEX IF NOT EXISTS idx_list_access_requests_requester_status ON list_access_requests(requester_email, status)`,
+  `CREATE INDEX IF NOT EXISTS idx_user_contacts_owner_provider_name ON user_contacts(owner_email, provider, display_name)`,
+  `CREATE INDEX IF NOT EXISTS idx_contact_oauth_states_expires ON contact_oauth_states(expires_at)`,
 ];
 
 let schemaReady = null;
@@ -391,6 +434,201 @@ export class D1Store {
        ORDER BY LOWER(COALESCE(full_name, display_name)), LOWER(email)`,
     );
     return rows.map(peopleIndexView);
+  }
+
+  async searchPrivateContacts(ownerEmail, query, { provider = "google", limit = PEOPLE_SEARCH_LIMIT } = {}) {
+    const owner = requireValidEmail(ownerEmail, "contact owner");
+    const normalized = normalizePeopleQuery(query);
+    if (normalized.length < 2) return [];
+    const cappedLimit = Math.min(Math.max(Number(limit) || PEOPLE_SEARCH_LIMIT, 1), PEOPLE_SEARCH_LIMIT);
+    const contains = `%${escapeSqlLike(normalized)}%`;
+    const prefix = `${escapeSqlLike(normalized)}%`;
+    const rows = await this.all(
+      `SELECT email, display_name, search_terms_json, provider, 'Your Google contacts' AS source_label
+       FROM user_contacts
+       WHERE owner_email = ? AND provider = ?
+         AND (
+           LOWER(email) LIKE ? ESCAPE '\\'
+           OR LOWER(display_name) LIKE ? ESCAPE '\\'
+           OR LOWER(search_terms_json) LIKE ? ESCAPE '\\'
+         )
+       ORDER BY
+         CASE
+           WHEN LOWER(email) = ? THEN 0
+           WHEN LOWER(email) LIKE ? ESCAPE '\\' THEN 1
+           WHEN LOWER(display_name) LIKE ? ESCAPE '\\' THEN 2
+           WHEN LOWER(search_terms_json) LIKE ? ESCAPE '\\' THEN 2
+           ELSE 3
+         END,
+         LOWER(display_name),
+         LOWER(email)
+       LIMIT ?`,
+      owner,
+      provider,
+      contains,
+      contains,
+      contains,
+      normalized,
+      prefix,
+      prefix,
+      prefix,
+      cappedLimit,
+    );
+    return rows.map(privateContactSearchView);
+  }
+
+  async getPrivateContactIndex(ownerEmail, { provider = "google", limit = PRIVATE_CONTACT_INDEX_LIMIT } = {}) {
+    const owner = requireValidEmail(ownerEmail, "contact owner");
+    const cappedLimit = Math.min(Math.max(Number(limit) || PRIVATE_CONTACT_INDEX_LIMIT, 1), PRIVATE_CONTACT_INDEX_LIMIT);
+    const rows = await this.all(
+      `SELECT email, display_name, search_terms_json, provider, 'Your Google contacts' AS source_label
+       FROM user_contacts
+       WHERE owner_email = ? AND provider = ?
+       ORDER BY LOWER(display_name), LOWER(email)
+       LIMIT ?`,
+      owner,
+      provider,
+      cappedLimit,
+    );
+    return rows.map(privateContactIndexView);
+  }
+
+  async getContactSource(ownerEmail, provider = "google") {
+    const owner = requireValidEmail(ownerEmail, "contact owner");
+    const source = await this.first(
+      `SELECT
+          source.*,
+          (SELECT COUNT(*) FROM user_contacts contacts WHERE contacts.owner_email = source.owner_email AND contacts.provider = source.provider) AS contact_count
+       FROM user_contact_sources source
+       WHERE source.owner_email = ? AND source.provider = ?`,
+      owner,
+      provider,
+    );
+    return source ? contactSourceView(source, { provider }) : contactSourceView({}, { provider });
+  }
+
+  async getContactSourceSecret(ownerEmail, provider = "google") {
+    const owner = requireValidEmail(ownerEmail, "contact owner");
+    return this.first(
+      `SELECT owner_email, provider, encrypted_refresh_token, account_email, sync_token, last_synced_at
+       FROM user_contact_sources
+       WHERE owner_email = ? AND provider = ?`,
+      owner,
+      provider,
+    );
+  }
+
+  async upsertContactSource(ownerEmail, provider, patch = {}) {
+    const owner = requireValidEmail(ownerEmail, "contact owner");
+    const now = new Date().toISOString();
+    await this.ensureUser(owner);
+    await this.run(
+      `INSERT INTO user_contact_sources (
+         owner_email, provider, encrypted_refresh_token, account_email, contact_count,
+         sync_token, last_synced_at, sync_status, error_message, created_at, updated_at
+       )
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+       ON CONFLICT(owner_email, provider) DO UPDATE SET
+         encrypted_refresh_token = COALESCE(excluded.encrypted_refresh_token, user_contact_sources.encrypted_refresh_token),
+         account_email = COALESCE(excluded.account_email, user_contact_sources.account_email),
+         contact_count = COALESCE(excluded.contact_count, user_contact_sources.contact_count),
+         sync_token = COALESCE(excluded.sync_token, user_contact_sources.sync_token),
+         last_synced_at = COALESCE(excluded.last_synced_at, user_contact_sources.last_synced_at),
+         sync_status = excluded.sync_status,
+         error_message = excluded.error_message,
+         updated_at = excluded.updated_at`,
+      owner,
+      provider,
+      patch.encrypted_refresh_token || null,
+      patch.account_email || null,
+      patch.contact_count === undefined ? null : Number(patch.contact_count || 0),
+      patch.sync_token || null,
+      patch.last_synced_at || null,
+      patch.sync_status || "idle",
+      patch.error_message || "",
+      now,
+      now,
+    );
+    return this.getContactSource(owner, provider);
+  }
+
+  async disconnectContactSource(ownerEmail, provider = "google") {
+    const owner = requireValidEmail(ownerEmail, "contact owner");
+    await this.batchRun([
+      [`DELETE FROM user_contacts WHERE owner_email = ? AND provider = ?`, owner, provider],
+      [`DELETE FROM user_contact_sources WHERE owner_email = ? AND provider = ?`, owner, provider],
+      [`DELETE FROM contact_oauth_states WHERE owner_email = ? AND provider = ?`, owner, provider],
+    ]);
+    return contactSourceView({}, { provider });
+  }
+
+  async replacePrivateContacts(ownerEmail, provider, contacts, { syncedAt = new Date().toISOString(), syncToken = null, accountEmail = "" } = {}) {
+    const owner = requireValidEmail(ownerEmail, "contact owner");
+    const normalizedContacts = normalizePrivateContactBatch(contacts, { ownerEmail: owner, provider, syncedAt });
+    await this.ensureUser(owner);
+    const statements = [
+      [`DELETE FROM user_contacts WHERE owner_email = ? AND provider = ?`, owner, provider],
+      ...normalizedContacts.map((contact) => [
+        `INSERT INTO user_contacts (owner_email, provider, provider_contact_id, email, display_name, search_terms_json, synced_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        contact.owner_email,
+        contact.provider,
+        contact.provider_contact_id,
+        contact.email,
+        contact.display_name,
+        contact.search_terms_json,
+        contact.synced_at,
+      ]),
+    ];
+    await this.batchRun(statements);
+    await this.upsertContactSource(owner, provider, {
+      account_email: accountEmail,
+      contact_count: normalizedContacts.length,
+      sync_token: syncToken || null,
+      last_synced_at: syncedAt,
+      sync_status: "ok",
+      error_message: "",
+    });
+    return {
+      contact_count: normalizedContacts.length,
+      contacts: normalizedContacts.map(privateContactIndexView),
+    };
+  }
+
+  async createContactOAuthState(ownerEmail, state) {
+    const owner = requireValidEmail(ownerEmail, "contact owner");
+    await this.ensureUser(owner);
+    await this.cleanupExpiredContactOAuthStates();
+    await this.run(
+      `INSERT INTO contact_oauth_states (state, owner_email, provider, code_verifier, redirect_to, expires_at)
+       VALUES (?, ?, ?, ?, ?, ?)`,
+      state.state,
+      owner,
+      state.provider || "google",
+      state.code_verifier,
+      state.redirect_to || "/",
+      state.expires_at,
+    );
+    return state;
+  }
+
+  async consumeContactOAuthState(ownerEmail, stateValue) {
+    const owner = requireValidEmail(ownerEmail, "contact owner");
+    const state = await this.first(
+      `SELECT state, owner_email, provider, code_verifier, redirect_to, expires_at
+       FROM contact_oauth_states
+       WHERE state = ? AND owner_email = ?`,
+      String(stateValue || ""),
+      owner,
+    );
+    if (!state) return null;
+    await this.run(`DELETE FROM contact_oauth_states WHERE state = ?`, state.state);
+    if (new Date(state.expires_at).getTime() < Date.now()) return null;
+    return state;
+  }
+
+  async cleanupExpiredContactOAuthStates() {
+    await this.run(`DELETE FROM contact_oauth_states WHERE expires_at < ?`, new Date().toISOString());
   }
 
   async getPeopleProfiles() {

@@ -9,6 +9,13 @@ import {
   validateListTitle,
   validateTaskTitle,
 } from "./shared-lists-core.mjs";
+import {
+  disconnectGoogleContacts,
+  googleContactsAuthorizationUrl,
+  googleContactsStatus,
+  handleGoogleContactsCallback,
+  syncGoogleContacts,
+} from "./google-contacts.mjs";
 
 const ADMIN_EMAILS = new Set();
 const IDEMPOTENCY_TTL_HOURS = 72;
@@ -26,6 +33,7 @@ export async function routeApiRequest(
     logger = null,
     quickActionIntegrationEnabled = false,
     quickActionIntegrationOrigins = "",
+    privateContactsConfig = { enabled: false },
     defer = null,
   } = {},
 ) {
@@ -200,7 +208,7 @@ export async function routeApiRequest(
       await store.ensureUser(userEmail);
       const provider = new KnownPeopleProvider(store);
       return send({
-        people: await provider.search(url.searchParams.get("q") || ""),
+        people: await peopleSearchForUser(provider, store, userEmail, url.searchParams.get("q") || "", privateContactsConfig),
       });
     }
 
@@ -209,7 +217,49 @@ export async function routeApiRequest(
       logEntry.action = "people_index";
       await store.ensureUser(userEmail);
       const provider = new KnownPeopleProvider(store);
-      return send({ people: await provider.index() });
+      return send({ people: await peopleIndexForUser(provider, store, userEmail, privateContactsConfig) });
+    }
+
+    if (path === "/api/contacts/google/status" && method === "GET") {
+      logEntry.route = "/api/contacts/google/status";
+      logEntry.action = "contacts_google_status";
+      await store.ensureUser(userEmail);
+      return send(await googleContactsStatus(store, userEmail, privateContactsConfig?.google || privateContactsConfig));
+    }
+
+    if (path === "/api/contacts/google/connect" && method === "POST") {
+      logEntry.route = "/api/contacts/google/connect";
+      logEntry.action = "contacts_google_connect";
+      await store.ensureUser(userEmail);
+      const body = await readJson(request);
+      return send(await googleContactsAuthorizationUrl(request, store, userEmail, privateContactsConfig?.google || privateContactsConfig, {
+        redirectTo: body.redirect_to || body.redirectTo || "/",
+      }));
+    }
+
+    if (path === "/api/contacts/google/callback" && method === "GET") {
+      logEntry.route = "/api/contacts/google/callback";
+      logEntry.action = "contacts_google_callback";
+      await store.ensureUser(userEmail);
+      const result = await handleGoogleContactsCallback(request, store, userEmail, privateContactsConfig?.google || privateContactsConfig);
+      logEntry.status = 302;
+      logEntry.outcome = "ok";
+      const redirectUrl = new URL(result.redirect_to || "/", request.url);
+      return Response.redirect(redirectUrl.toString(), 302);
+    }
+
+    if (path === "/api/contacts/google/sync" && method === "POST") {
+      logEntry.route = "/api/contacts/google/sync";
+      logEntry.action = "contacts_google_sync";
+      await store.ensureUser(userEmail);
+      return send(await syncGoogleContacts(store, userEmail, privateContactsConfig?.google || privateContactsConfig));
+    }
+
+    if (path === "/api/contacts/google" && method === "DELETE") {
+      logEntry.route = "/api/contacts/google";
+      logEntry.action = "contacts_google_disconnect";
+      await store.ensureUser(userEmail);
+      return send({ source: await disconnectGoogleContacts(store, userEmail) });
     }
 
     if (path === "/api/admin/access-audit" && method === "GET") {
@@ -550,6 +600,64 @@ async function activeListByIdForBootstrap(store, userEmail, listId) {
     return null;
   }
 }
+
+async function peopleSearchForUser(provider, store, userEmail, query, privateContactsConfig) {
+  const [knownPeople, privateContacts] = await Promise.all([
+    provider.search(query),
+    privateContactsSearchForUser(store, userEmail, query, privateContactsConfig),
+  ]);
+  return mergePeopleResults(knownPeople, privateContacts);
+}
+
+async function peopleIndexForUser(provider, store, userEmail, privateContactsConfig) {
+  const [knownPeople, privateContacts] = await Promise.all([
+    provider.index(),
+    privateContactsIndexForUser(store, userEmail, privateContactsConfig),
+  ]);
+  return mergePeopleResults(knownPeople, privateContacts, { limit: 3000 });
+}
+
+async function privateContactsSearchForUser(store, userEmail, query, privateContactsConfig) {
+  if (!privateContactsConfigured(privateContactsConfig) || typeof store.searchPrivateContacts !== "function") return [];
+  return store.searchPrivateContacts(userEmail, query);
+}
+
+async function privateContactsIndexForUser(store, userEmail, privateContactsConfig) {
+  if (!privateContactsConfigured(privateContactsConfig) || typeof store.getPrivateContactIndex !== "function") return [];
+  return store.getPrivateContactIndex(userEmail);
+}
+
+function privateContactsConfigured(privateContactsConfig) {
+  const google = privateContactsConfig?.google || privateContactsConfig || {};
+  return Boolean(google.enabled && google.clientId && google.clientSecret && google.tokenSecret);
+}
+
+function mergePeopleResults(...args) {
+  const last = args[args.length - 1];
+  const options = last && typeof last === "object" && "limit" in last ? args.pop() : {};
+  const limit = options.limit || PEOPLE_MERGE_LIMIT;
+  const byEmail = new Map();
+  for (const person of args.flat()) {
+    const email = normalizeEmail(person?.email);
+    if (!email) continue;
+    const existing = byEmail.get(email);
+    if (!existing) {
+      byEmail.set(email, { ...person, email });
+      continue;
+    }
+    byEmail.set(email, {
+      ...person,
+      ...existing,
+      search_terms: [...new Set([...(existing.search_terms || []), ...(person.search_terms || [])])],
+      source: existing.source || person.source,
+      source_label: existing.source_label || person.source_label,
+      private: Boolean(existing.private || person.private),
+    });
+  }
+  return [...byEmail.values()].slice(0, limit);
+}
+
+const PEOPLE_MERGE_LIMIT = 3000;
 
 async function persistUserAfterResponse(store, userEmail, defer) {
   const persistence = Promise.resolve()

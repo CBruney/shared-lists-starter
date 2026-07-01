@@ -161,6 +161,7 @@ export function accessRequestView(request) {
 
 export const PEOPLE_SEARCH_LIMIT = 8;
 export const PEOPLE_IMPORT_LIMIT = 250;
+export const PRIVATE_CONTACT_INDEX_LIMIT = 2000;
 
 export function normalizePeopleQuery(value) {
   return String(value || "").trim().toLowerCase().replace(/\s+/g, " ");
@@ -190,6 +191,76 @@ export function peopleIndexView(user) {
     display_name: displayName,
     search_terms: searchTerms,
   };
+}
+
+export function privateContactSearchView(contact) {
+  return {
+    email: normalizeEmail(contact.email),
+    display_name: contact.display_name || displayNameFromEmail(contact.email),
+    source: contact.provider || "private_contacts",
+    source_label: contact.source_label || privateContactSourceLabel(contact.provider),
+    private: true,
+  };
+}
+
+export function privateContactIndexView(contact) {
+  const email = normalizeEmail(contact.email);
+  const displayName = contact.display_name || displayNameFromEmail(email);
+  const searchTerms = [...new Set([
+    email,
+    email.split("@")[0] || "",
+    displayName,
+    ...parseAliases(contact.search_terms_json),
+  ].map(normalizePeopleQuery).filter(Boolean))];
+  return {
+    email,
+    display_name: displayName,
+    search_terms: searchTerms,
+    source: contact.provider || "private_contacts",
+    source_label: contact.source_label || privateContactSourceLabel(contact.provider),
+    private: true,
+  };
+}
+
+function privateContactSourceLabel(provider) {
+  return provider === "google" ? "Your Google contacts" : "Your contacts";
+}
+
+export function normalizePrivateContact(contact, { ownerEmail, provider = "google", syncedAt = new Date().toISOString() } = {}) {
+  const owner = requireValidEmail(ownerEmail, "contact owner");
+  const email = requireValidEmail(contact?.email, "contact email");
+  const displayName = normalizeProfileText(contact?.display_name || contact?.displayName || displayNameFromEmail(email), "display name", 120)
+    || displayNameFromEmail(email);
+  const providerContactId = normalizeOptionalProfileValue(contact?.provider_contact_id || contact?.providerContactId || email, "provider contact id", 240)
+    || email;
+  const suppliedTerms = Array.isArray(contact?.search_terms) ? contact.search_terms : [];
+  const searchTerms = [...new Set([
+    displayName,
+    email,
+    email.split("@")[0] || "",
+    ...suppliedTerms,
+  ].map(normalizePeopleQuery).filter(Boolean))].slice(0, 20);
+  const synced = new Date(contact?.synced_at || contact?.syncedAt || syncedAt);
+  if (Number.isNaN(synced.getTime())) throw new AppError(400, `Contact sync time is invalid for ${email}`);
+  return {
+    owner_email: owner,
+    provider,
+    provider_contact_id: providerContactId,
+    email,
+    display_name: displayName,
+    search_terms_json: JSON.stringify(searchTerms),
+    synced_at: synced.toISOString(),
+  };
+}
+
+export function normalizePrivateContactBatch(contacts, options = {}) {
+  if (!Array.isArray(contacts)) throw new AppError(400, "contacts must be an array");
+  const byOwnerProviderEmail = new Map();
+  for (const contact of contacts.slice(0, PRIVATE_CONTACT_INDEX_LIMIT)) {
+    const normalized = normalizePrivateContact(contact, options);
+    byOwnerProviderEmail.set(`${normalized.owner_email}:${normalized.provider}:${normalized.email}`, normalized);
+  }
+  return [...byOwnerProviderEmail.values()];
 }
 
 export function normalizePeopleProfile(profile, { syncedAt = new Date().toISOString() } = {}) {
@@ -261,6 +332,18 @@ export function peopleProfileAdminView(user) {
   };
 }
 
+export function contactSourceView(source = {}, { provider = "google" } = {}) {
+  return {
+    provider: source.provider || provider,
+    connected: Boolean(source.connected || source.encrypted_refresh_token),
+    account_email: source.account_email || "",
+    contact_count: Number(source.contact_count || 0),
+    last_synced_at: source.last_synced_at || null,
+    sync_status: source.sync_status || "idle",
+    error_message: source.error_message || "",
+  };
+}
+
 export class KnownPeopleProvider {
   constructor(store) {
     this.store = store;
@@ -287,6 +370,9 @@ export class MemoryStore {
     this.idempotency = new Map();
     this.accessRequests = new Map();
     this.externalTaskRefs = new Map();
+    this.contactSources = new Map();
+    this.privateContacts = new Map();
+    this.contactOAuthStates = new Map();
 
     for (const seededUser of seed.users || []) {
       const email = typeof seededUser === "string" ? seededUser : seededUser.email;
@@ -409,6 +495,100 @@ export class MemoryStore {
     return Array.from(this.users.values())
       .sort((a, b) => String(a.full_name || a.display_name || a.email).localeCompare(String(b.full_name || b.display_name || b.email)))
       .map(peopleIndexView);
+  }
+
+  async searchPrivateContacts(ownerEmail, query, { provider = "google", limit = PEOPLE_SEARCH_LIMIT } = {}) {
+    const owner = requireValidEmail(ownerEmail, "contact owner");
+    const normalized = normalizePeopleQuery(query);
+    if (normalized.length < 2) return [];
+    return Array.from(this.privateContactMap(owner, provider).values())
+      .filter((contact) => privateContactTerms(contact).some((term) => term.includes(normalized)))
+      .sort((a, b) => sortPrivateContacts(a, b, normalized))
+      .slice(0, Math.min(Math.max(Number(limit) || PEOPLE_SEARCH_LIMIT, 1), PEOPLE_SEARCH_LIMIT))
+      .map(privateContactSearchView);
+  }
+
+  async getPrivateContactIndex(ownerEmail, { provider = "google", limit = PRIVATE_CONTACT_INDEX_LIMIT } = {}) {
+    const owner = requireValidEmail(ownerEmail, "contact owner");
+    return Array.from(this.privateContactMap(owner, provider).values())
+      .sort((a, b) => String(a.display_name || a.email).localeCompare(String(b.display_name || b.email)))
+      .slice(0, Math.min(Math.max(Number(limit) || PRIVATE_CONTACT_INDEX_LIMIT, 1), PRIVATE_CONTACT_INDEX_LIMIT))
+      .map(privateContactIndexView);
+  }
+
+  async getContactSource(ownerEmail, provider = "google") {
+    const owner = requireValidEmail(ownerEmail, "contact owner");
+    const source = this.contactSources.get(contactProviderKey(owner, provider));
+    const contactCount = this.privateContactMap(owner, provider).size;
+    return source ? contactSourceView({ ...source, contact_count: contactCount }, { provider }) : contactSourceView({ contact_count: contactCount }, { provider });
+  }
+
+  async upsertContactSource(ownerEmail, provider, patch = {}) {
+    const owner = requireValidEmail(ownerEmail, "contact owner");
+    const key = contactProviderKey(owner, provider);
+    const existing = this.contactSources.get(key) || {
+      owner_email: owner,
+      provider,
+      created_at: nowIso(),
+    };
+    const next = {
+      ...existing,
+      ...patch,
+      owner_email: owner,
+      provider,
+      updated_at: nowIso(),
+    };
+    this.contactSources.set(key, next);
+    return this.getContactSource(owner, provider);
+  }
+
+  async disconnectContactSource(ownerEmail, provider = "google") {
+    const owner = requireValidEmail(ownerEmail, "contact owner");
+    this.contactSources.delete(contactProviderKey(owner, provider));
+    this.privateContacts.delete(contactProviderKey(owner, provider));
+    return contactSourceView({}, { provider });
+  }
+
+  async replacePrivateContacts(ownerEmail, provider, contacts, { syncedAt = nowIso(), syncToken = null, accountEmail = "" } = {}) {
+    const owner = requireValidEmail(ownerEmail, "contact owner");
+    const normalizedContacts = normalizePrivateContactBatch(contacts, { ownerEmail: owner, provider, syncedAt });
+    const contactMap = new Map(normalizedContacts.map((contact) => [contact.email, contact]));
+    this.privateContacts.set(contactProviderKey(owner, provider), contactMap);
+    await this.upsertContactSource(owner, provider, {
+      account_email: accountEmail,
+      contact_count: contactMap.size,
+      last_synced_at: syncedAt,
+      sync_token: syncToken || "",
+      sync_status: "ok",
+      error_message: "",
+    });
+    return {
+      contact_count: contactMap.size,
+      contacts: normalizedContacts.map(privateContactIndexView),
+    };
+  }
+
+  async createContactOAuthState(ownerEmail, state) {
+    const owner = requireValidEmail(ownerEmail, "contact owner");
+    this.contactOAuthStates.set(state.state, {
+      ...state,
+      owner_email: owner,
+      created_at: nowIso(),
+    });
+    return state;
+  }
+
+  async consumeContactOAuthState(ownerEmail, stateValue) {
+    const owner = requireValidEmail(ownerEmail, "contact owner");
+    const state = this.contactOAuthStates.get(String(stateValue || ""));
+    if (!state || state.owner_email !== owner) return null;
+    this.contactOAuthStates.delete(stateValue);
+    if (new Date(state.expires_at).getTime() < Date.now()) return null;
+    return state;
+  }
+
+  privateContactMap(ownerEmail, provider = "google") {
+    return this.privateContacts.get(contactProviderKey(ownerEmail, provider)) || new Map();
   }
 
   async getPeopleProfiles() {
@@ -1267,6 +1447,36 @@ function peopleRank(user, query) {
   if (email === query || localPart === query) return 0;
   if (email.startsWith(query) || localPart.startsWith(query)) return 1;
   if (fullName.startsWith(query) || displayName.startsWith(query) || slackHandle.startsWith(query) || aliases.some((alias) => alias.startsWith(query))) return 2;
+  return 3;
+}
+
+function contactProviderKey(ownerEmail, provider) {
+  return `${normalizeEmail(ownerEmail)}:${String(provider || "google").trim().toLowerCase()}`;
+}
+
+function privateContactTerms(contact) {
+  return [...new Set([
+    normalizeEmail(contact.email),
+    normalizeEmail(contact.email).split("@")[0] || "",
+    contact.display_name,
+    ...parseAliases(contact.search_terms_json),
+  ].map(normalizePeopleQuery).filter(Boolean))];
+}
+
+function sortPrivateContacts(a, b, query) {
+  const rankA = privateContactRank(a, query);
+  const rankB = privateContactRank(b, query);
+  if (rankA !== rankB) return rankA - rankB;
+  return String(a.display_name || a.email).localeCompare(String(b.display_name || b.email));
+}
+
+function privateContactRank(contact, query) {
+  const email = normalizeEmail(contact.email);
+  const localPart = email.split("@")[0] || "";
+  const terms = privateContactTerms(contact);
+  if (email === query || localPart === query || terms.some((term) => term === query)) return 0;
+  if (email.startsWith(query) || localPart.startsWith(query)) return 1;
+  if (terms.some((term) => term.startsWith(query))) return 2;
   return 3;
 }
 

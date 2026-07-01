@@ -38,6 +38,9 @@ test("PWA shell build caches only safe static assets", async () => {
   assert.match(index, /id="show-home-screen-guide-button"/);
   assert.match(index, /Install as app/);
   assert.match(index, /id="install-app-settings-description"/);
+  assert.match(index, /id="google-contacts-settings-row" hidden/);
+  assert.match(index, /Google Contacts/);
+  assert.match(index, /Optional private autocomplete/);
   assert.match(index, /id="settings-license-link" href="\/license\.html"/);
   assert.match(index, /Reusable starter: Apache-2\.0/);
   assert.match(index, /id="settings-auth-action"/);
@@ -96,6 +99,11 @@ test("PWA shell build caches only safe static assets", async () => {
   assert.match(app, /apiFetch\("\/api\/people\/index"\)/);
   assert.match(app, /function searchPeopleIndex\(/);
   assert.match(app, /sharedLists:peopleIndex:v1:/);
+  assert.match(app, /function connectGoogleContacts\(/);
+  assert.match(app, /function syncGoogleContacts\(/);
+  assert.match(app, /function disconnectGoogleContacts\(/);
+  assert.match(sourceApp, /privateGoogleContacts: features\.privateGoogleContacts === true/);
+  assert.match(app, /\/api\/contacts\/google\/sync/);
   assert.match(app, /sharedLists:theme:v1/);
   assert.match(app, /sharedLists:overviewDemoDismissed:v1/);
   assert.match(app, /function setThemePreference\(/);
@@ -203,9 +211,9 @@ test("PWA shell build caches only safe static assets", async () => {
   assert.match(shell, /data-generic-shell="true"/);
   assert.doesNotMatch(shell, /<option value=/);
 
-  assert.equal((await stat("dist/client/app.js")).size < 146_000, true);
-  assert.equal((await stat("dist/client/styles.css")).size < 55_000, true);
-  assert.equal((await stat("dist/client/index.html")).size < 28_500, true);
+  assert.equal((await stat("dist/client/app.js")).size < 156_000, true);
+  assert.equal((await stat("dist/client/styles.css")).size < 56_000, true);
+  assert.equal((await stat("dist/client/index.html")).size < 29_500, true);
 
   const cachedShellText = [
     app,
