@@ -2399,7 +2399,7 @@ function renderSharing() {
     els.visibilityChip.textContent = isOwner() ? "Owned by me" : "Shared with me";
     els.visibilityChip.className = isOwner() ? "visibility-chip owned" : "visibility-chip shared";
     els.listOwnerLabel.textContent = isOwner() ? "Private or shared list" : `Owned by ${active.list.owner_name}`;
-    els.headerAvatars.innerHTML = active.members.slice(0, 5).map(memberAvatar).join("");
+    renderHeaderAvatars(headerMembersForActive(active));
     renderShareRequestBadge(active.list);
   }
   renderDetails();
@@ -2793,7 +2793,7 @@ function renderMain() {
     els.visibilityChip.textContent = "Sign in";
     els.visibilityChip.className = "visibility-chip";
     els.listOwnerLabel.textContent = "Private list access";
-    els.headerAvatars.innerHTML = "";
+    renderHeaderAvatars([]);
     els.accessDeniedPanel.hidden = true;
     els.addTaskForm.hidden = true;
     els.completedDrawer.hidden = true;
@@ -2822,7 +2822,7 @@ function renderMain() {
     els.visibilityChip.textContent = "Private";
     els.visibilityChip.className = "visibility-chip";
     els.listOwnerLabel.textContent = "Access needed";
-    els.headerAvatars.innerHTML = "";
+    renderHeaderAvatars([]);
     renderDeniedListAccess();
     els.taskList.innerHTML = "";
     return;
@@ -2835,7 +2835,7 @@ function renderMain() {
     els.visibilityChip.textContent = hasLists ? "Lists" : "Private";
     els.visibilityChip.className = "visibility-chip";
     els.listOwnerLabel.textContent = hasLists ? "Select from the sidebar" : "Create a list";
-    els.headerAvatars.innerHTML = "";
+    renderHeaderAvatars([]);
     els.accessDeniedPanel.hidden = true;
     els.addTaskForm.hidden = false;
     els.completedDrawer.hidden = false;
@@ -2850,7 +2850,7 @@ function renderMain() {
   els.visibilityChip.textContent = isOwner() ? "Owned by me" : "Shared with me";
   els.visibilityChip.className = isOwner() ? "visibility-chip owned" : "visibility-chip shared";
   els.listOwnerLabel.textContent = isOwner() ? "Private or shared list" : `Owned by ${active.list.owner_name}`;
-  els.headerAvatars.innerHTML = active.members.slice(0, 5).map(memberAvatar).join("");
+  renderHeaderAvatars(headerMembersForActive(active));
 
   if (active.loading) {
     els.taskList.innerHTML = `
@@ -4551,22 +4551,61 @@ function normalizeListDetail(active, listId) {
   const incomingMembers = Array.isArray(active.members) ? active.members : null;
   const incomingActivity = Array.isArray(active.activity) ? active.activity : null;
   const incomingAccessRequests = Array.isArray(active.access_requests) ? active.access_requests : null;
-  const detail = {
-    ...active,
-    members: incomingMembers || cached?.members || [],
-    activity: incomingActivity || cached?.activity || [],
-    access_requests: incomingAccessRequests || cached?.access_requests || [],
-    completed_tasks: active.completed_tasks || [],
-    completed_tasks_loaded: Boolean(active.completed_tasks_loaded),
-    completed_tasks_loading: false,
-    details_loaded: detailsLoaded,
-    details_loading: !detailsLoaded,
-  };
+  const detail = preserveKnownListMetadataWhileLoading(
+    {
+      ...active,
+      members: incomingMembers || cached?.members || [],
+      activity: incomingActivity || cached?.activity || [],
+      access_requests: incomingAccessRequests || cached?.access_requests || [],
+      completed_tasks: active.completed_tasks || [],
+      completed_tasks_loaded: Boolean(active.completed_tasks_loaded),
+      completed_tasks_loading: false,
+      details_loaded: detailsLoaded,
+      details_loading: !detailsLoaded,
+    },
+    listId,
+    cached,
+  );
   if (!detail.completed_tasks_loaded && shouldReuseCachedCompletedTasks(cached, detail)) {
     detail.completed_tasks = cached.completed_tasks || [];
     detail.completed_tasks_loaded = true;
   }
   return detail;
+}
+
+function preserveKnownListMetadataWhileLoading(detail, listId, cached = listDetailCache.get(listId)) {
+  if (detail.details_loaded) return detail;
+  const active = state.active?.list?.id === listId ? state.active : null;
+  const knownDetail = fullerKnownDetail(active, cached);
+  return {
+    ...detail,
+    members: fullerKnownMembers(detail.members, active?.members, cached?.members),
+    activity: detail.activity.length ? detail.activity : knownDetail?.activity || detail.activity,
+    access_requests: detail.access_requests.length ? detail.access_requests : knownDetail?.access_requests || detail.access_requests,
+  };
+}
+
+function fullerKnownDetail(...details) {
+  return details
+    .filter((detail) => detail?.details_loaded)
+    .sort((a, b) => {
+      const memberCount = (b.members?.length || 0) - (a.members?.length || 0);
+      if (memberCount) return memberCount;
+      const activityCount = (b.activity?.length || 0) - (a.activity?.length || 0);
+      if (activityCount) return activityCount;
+      return (b.access_requests?.length || 0) - (a.access_requests?.length || 0);
+    })[0];
+}
+
+function fullerKnownMembers(incomingMembers = [], ...knownMemberSets) {
+  const incoming = Array.isArray(incomingMembers) ? incomingMembers : [];
+  const incomingEmails = new Set(incoming.map((member) => normalizeEmail(member.email)).filter(Boolean));
+  return knownMemberSets.reduce((best, candidate) => {
+    if (!Array.isArray(candidate) || candidate.length <= best.length) return best;
+    const candidateEmails = new Set(candidate.map((member) => normalizeEmail(member.email)).filter(Boolean));
+    const candidateContainsIncoming = [...incomingEmails].every((email) => candidateEmails.has(email));
+    return candidateContainsIncoming ? candidate : best;
+  }, incoming);
 }
 
 function shouldReuseCachedCompletedTasks(cached, detail) {
@@ -4600,10 +4639,13 @@ function pickCachedListDetails(detail) {
 
 function mergeListDetails(base, details) {
   if (!base) return normalizeListDetail({ ...details, open_tasks: [], completed_tasks: [] }, details.list_id || details.list?.id);
+  const members = Array.isArray(details.members)
+    ? mergeMembersPreservingCurrentOrder(base.members || [], details.members)
+    : base.members || [];
   return {
     ...base,
     list: details.list ? { ...base.list, ...details.list } : base.list,
-    members: details.members || base.members || [],
+    members,
     activity: details.activity || base.activity || [],
     access_requests: details.access_requests || base.access_requests || [],
     details_loaded: true,
@@ -5096,14 +5138,56 @@ function displayNameFromEmail(email) {
     .join(" ");
 }
 
-function memberAvatar(member) {
-  const initials = member.display_name
+function headerMembersForActive(active) {
+  if (!active) return [];
+  const members = Array.isArray(active.members) ? active.members : [];
+  const expectedCount = Number(active.list?.member_count || members.length || 0);
+  if (active.details_loaded || members.length >= expectedCount) return members;
+  const cached = getCachedListDetail(active.list?.id);
+  if (cached?.members?.length >= expectedCount) return cached.members;
+  return [];
+}
+
+function renderHeaderAvatars(members = []) {
+  const visibleMembers = members.slice(0, 5);
+  const seen = new Set();
+  visibleMembers.forEach((member) => {
+    const email = normalizeEmail(member.email);
+    if (!email) return;
+    const signature = `${member.display_name || ""}|${member.email || ""}`;
+    let avatar = els.headerAvatars.querySelector(`[data-avatar-email="${cssEscape(email)}"]`);
+    if (!avatar) {
+      avatar = document.createElement("span");
+      avatar.className = "avatar";
+      avatar.dataset.avatarEmail = email;
+    }
+    if (avatar.dataset.sig !== signature) {
+      avatar.dataset.sig = signature;
+      avatar.title = member.email || "";
+      avatar.textContent = memberInitials(member);
+    }
+    seen.add(email);
+    els.headerAvatars.appendChild(avatar);
+  });
+
+  els.headerAvatars.querySelectorAll("[data-avatar-email]").forEach((avatar) => {
+    if (!seen.has(avatar.dataset.avatarEmail)) avatar.remove();
+  });
+}
+
+function memberInitials(member) {
+  const name = String(member.display_name || displayNameFromEmail(member.email) || member.email || "");
+  return name
     .split(/\s+/)
     .filter(Boolean)
     .map((part) => part[0])
     .join("")
     .slice(0, 2)
     .toUpperCase();
+}
+
+function memberAvatar(member) {
+  const initials = memberInitials(member);
   return `<span class="avatar" title="${escapeAttr(member.email)}">${escapeHtml(initials || "?")}</span>`;
 }
 

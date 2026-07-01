@@ -111,6 +111,9 @@ test("PWA shell build caches only safe static assets", async () => {
   assert.doesNotMatch(sourceApp, /setTimeout\(nextOverviewStep/);
   assert.match(sourceApp, /closest\("\.overview-demo"\)\) nextOverviewStep\(\)/);
   assert.match(sourceApp, /mergeMembersPreservingCurrentOrder/);
+  assert.match(sourceApp, /function preserveKnownListMetadataWhileLoading/);
+  assert.match(sourceApp, /function headerMembersForActive/);
+  assert.match(sourceApp, /renderHeaderAvatars\(headerMembersForActive\(active\)\)/);
   assert.doesNotMatch(sourceApp, /a\.can_share && !b\.can_share/);
   assert.match(sourceApp, /if \(!maybeShowOverviewDemo\(\)\) maybeShowHomeScreenGuide\(\);/);
   assert.match(app, /function installGuideModeForDevice\(/);
@@ -200,7 +203,7 @@ test("PWA shell build caches only safe static assets", async () => {
   assert.match(shell, /data-generic-shell="true"/);
   assert.doesNotMatch(shell, /<option value=/);
 
-  assert.equal((await stat("dist/client/app.js")).size < 145_000, true);
+  assert.equal((await stat("dist/client/app.js")).size < 146_000, true);
   assert.equal((await stat("dist/client/styles.css")).size < 55_000, true);
   assert.equal((await stat("dist/client/index.html")).size < 28_500, true);
 
