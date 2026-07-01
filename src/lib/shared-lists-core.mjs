@@ -1245,8 +1245,8 @@ function uniqueTaskIds(taskIds) {
 function sortMembers(a, b) {
   if (a.role === "owner" && b.role !== "owner") return -1;
   if (a.role !== "owner" && b.role === "owner") return 1;
-  if (a.can_share && !b.can_share) return -1;
-  if (!a.can_share && b.can_share) return 1;
+  const createdOrder = String(a.created_at || "").localeCompare(String(b.created_at || ""));
+  if (createdOrder) return createdOrder;
   return String(a.display_name || a.email).localeCompare(String(b.display_name || b.email));
 }
 

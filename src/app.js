@@ -51,7 +51,6 @@ const maxTaskTitleLength = 4000;
 const mobileTaskDragStartDistance = 4;
 const resumeRefreshMinIntervalMs = 15000;
 const mobileListTransitionGuardMs = 180;
-const overviewDemoAdvanceMs = 5200;
 const listDeleteUndoWindowMs = 6200;
 const listPrefetchConcurrency = 2;
 const markerCoachDismissedKey = "sharedLists:markerCoachDismissed:v1";
@@ -93,7 +92,7 @@ const overviewSteps = [
   {
     key: "share",
     title: "Share the list",
-    cue: "Tap Share",
+    cue: "Tap share",
     pos: "right:5px;top:94px",
     copy: "Open Share to add people, allow them to share, or remove access.",
   },
@@ -114,7 +113,7 @@ const overviewSteps = [
   {
     key: "theme",
     title: "Choose a theme",
-    cue: "Tap Settings",
+    cue: "Tap gear",
     pos: "bottom:38px;right:5px",
     copy: "Open Settings to use light mode, dark mode, or match system.",
   },
@@ -290,7 +289,6 @@ let peopleSearchStartedAt = 0;
 let resumeRefreshTimer = 0;
 let lastResumeRefreshAt = 0;
 let mobileListTransitionGuardTimer = 0;
-let overviewDemoTimer = 0;
 
 init();
 
@@ -373,7 +371,12 @@ function bindEvents() {
     openOverviewDemo({ automatic: false });
   });
   els.overviewDemo.addEventListener("click", (event) => {
-    if (event.target === els.overviewDemo) completeOverviewDemo();
+    if (event.target === els.overviewDemo) {
+      completeOverviewDemo();
+      return;
+    }
+    if (event.target.closest("button, a, input, textarea, select, label")) return;
+    if (event.target.closest(".overview-demo")) nextOverviewStep();
   });
   els.overviewDemoClose.addEventListener("click", completeOverviewDemo);
   els.overviewDemoBack.addEventListener("click", previousOverviewStep);
@@ -1131,14 +1134,12 @@ function openOverviewDemo({ automatic = true } = {}) {
   state.detailsPopoverOpen = false;
   renderShellState();
   renderOverviewDemo();
-  startOverviewDemoTimer();
   window.requestAnimationFrame(() => els.overviewDemoNext.focus());
 }
 
 function closeOverviewDemo({ restoreFocus = true } = {}) {
   state.overviewDemoOpen = false;
   writeOverviewDemoDismissed();
-  stopOverviewDemoTimer();
   renderShellState();
   if (!restoreFocus) return;
   if (isElementVisible(els.settingsButton)) els.settingsButton.focus();
@@ -1161,7 +1162,6 @@ function setOverviewStep(index) {
   const stepCount = overviewSteps.length;
   state.overviewStepIndex = ((index % stepCount) + stepCount) % stepCount;
   renderOverviewDemo();
-  startOverviewDemoTimer();
 }
 
 function renderOverviewDemo() {
@@ -1183,17 +1183,6 @@ function renderOverviewDemo() {
   els.overviewDots.querySelectorAll("[data-overview-step]").forEach((button) => {
     button.addEventListener("click", () => setOverviewStep(Number(button.dataset.overviewStep)));
   });
-}
-
-function startOverviewDemoTimer() {
-  stopOverviewDemoTimer();
-  if (!state.overviewDemoOpen) return;
-  overviewDemoTimer = window.setTimeout(nextOverviewStep, overviewDemoAdvanceMs);
-}
-
-function stopOverviewDemoTimer() {
-  window.clearTimeout(overviewDemoTimer);
-  overviewDemoTimer = 0;
 }
 
 function readOverviewDemoDismissed() {
@@ -4626,11 +4615,12 @@ function commitSharing(active, listId = state.active?.list.id) {
   const detail = normalizeListDetail(active, active?.list?.id || listId);
   const serverListId = detail.list.id;
   if (state.active?.list.id === listId || state.active?.list.id === serverListId) {
+    const members = mergeMembersPreservingCurrentOrder(state.active.members, detail.members);
     state.activeListId = serverListId;
     state.active = {
       ...state.active,
       list: { ...state.active.list, ...detail.list },
-      members: detail.members,
+      members,
       activity: detail.activity,
       access_requests: detail.access_requests,
       details_loaded: true,
@@ -4643,6 +4633,18 @@ function commitSharing(active, listId = state.active?.list.id) {
   updateListSummary(serverListId, (list) => ({ ...list, ...detail.list }));
   if (state.session?.email) writeListSurfaceCache(state.session.email, state.groups);
   renderSharing();
+}
+
+function mergeMembersPreservingCurrentOrder(currentMembers = [], nextMembers = []) {
+  const currentOrder = new Map(currentMembers.map((member, index) => [normalizeEmail(member.email), index]));
+  return [...nextMembers].sort((a, b) => {
+    const aIndex = currentOrder.get(normalizeEmail(a.email));
+    const bIndex = currentOrder.get(normalizeEmail(b.email));
+    if (aIndex !== undefined && bIndex !== undefined) return aIndex - bIndex;
+    if (aIndex !== undefined) return -1;
+    if (bIndex !== undefined) return 1;
+    return sortMembersClientPair(a, b);
+  });
 }
 
 function adjustOpenTaskCount(listId, amount) {
@@ -4731,13 +4733,15 @@ function sortCompletedTasksClient(tasks) {
 }
 
 function sortMembersClient(members) {
-  return [...members].sort((a, b) => {
-    if (a.role === "owner" && b.role !== "owner") return -1;
-    if (a.role !== "owner" && b.role === "owner") return 1;
-    if (a.can_share && !b.can_share) return -1;
-    if (!a.can_share && b.can_share) return 1;
-    return String(a.display_name || a.email).localeCompare(String(b.display_name || b.email));
-  });
+  return [...members].sort(sortMembersClientPair);
+}
+
+function sortMembersClientPair(a, b) {
+  if (a.role === "owner" && b.role !== "owner") return -1;
+  if (a.role !== "owner" && b.role === "owner") return 1;
+  const createdOrder = String(a.created_at || "").localeCompare(String(b.created_at || ""));
+  if (createdOrder) return createdOrder;
+  return String(a.display_name || a.email).localeCompare(String(b.display_name || b.email));
 }
 
 function normalizeClientTitle(value) {

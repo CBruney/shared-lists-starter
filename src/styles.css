@@ -2318,12 +2318,18 @@ body.details-popover-open .details-panel {
   align-items: center;
   color: var(--blue);
   display: inline-flex;
+  gap: 4px;
   font-size: 10px;
   font-weight: 800;
   justify-content: center;
   min-height: 24px;
   padding: 0 7px;
   width: max-content;
+}
+
+.overview-mini-action svg {
+  height: 13px;
+  width: 13px;
 }
 
 .overview-mini-input {
@@ -2416,19 +2422,31 @@ body.details-popover-open .details-panel {
 }
 
 .overview-mini-footer {
-  display: flex;
+  display: grid;
   gap: 7px;
+  grid-template-columns: minmax(0, 1fr) 34px;
 }
 
 .overview-mini-footer span {
+  align-items: center;
   background: var(--surface-muted);
   color: var(--muted);
-  flex: 1;
+  display: flex;
   font-size: 11px;
   font-weight: 800;
+  justify-content: center;
   min-height: 28px;
   padding: 6px 8px;
   text-align: center;
+}
+
+.overview-mini-settings {
+  padding: 0;
+}
+
+.overview-mini-settings svg {
+  height: 16px;
+  width: 16px;
 }
 
 .overview-step-panel {

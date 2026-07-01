@@ -166,6 +166,11 @@ test("owners can delegate sharing while admin controls stay owner-only", async (
   const allCanShare = await store.allowAllMembersToShare("owner@local.test", created.list.id);
   assert.equal(allCanShare.members.find((member) => member.email === "editor@local.test").can_share, true);
   assert.equal(allCanShare.members.find((member) => member.email === "requester@local.test").can_share, true);
+  const memberOrderBeforeRevoke = allCanShare.members.map((member) => member.email);
+  const revoked = await store.updateMemberSharing("owner@local.test", created.list.id, "editor@local.test", false);
+  assert.deepEqual(revoked.members.map((member) => member.email), memberOrderBeforeRevoke);
+  assert.equal(revoked.members.find((member) => member.email === "editor@local.test").can_share, false);
+  await store.updateMemberSharing("owner@local.test", created.list.id, "editor@local.test", true);
   await store.addMember("editor@local.test", created.list.id, "external-owner@local.test");
   const gmailShare = await store.addMember("owner@local.test", created.list.id, "outside-member@local.test");
   assert.equal(gmailShare.members.some((member) => member.email === "outside-member@local.test"), true);

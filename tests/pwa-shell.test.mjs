@@ -51,8 +51,11 @@ test("PWA shell build caches only safe static assets", async () => {
   assert.match(index, /demo-done/);
   assert.match(index, /demo-theme/);
   assert.match(index, /overview-mini-calendar demo-date/);
+  assert.match(index, /overview-mini-action demo-copy"><svg/);
+  assert.match(index, /overview-mini-action demo-share"><svg/);
+  assert.match(index, /overview-mini-settings demo-theme"><svg/);
   assert.match(index, /Feedback/);
-  assert.match(index, /Settings/);
+  assert.doesNotMatch(index, /<span class="demo-theme">Settings<\/span>/);
   assert.match(index, /id="home-screen-guide"/);
   assert.match(index, /Install Shared Lists as an app/);
   assert.match(index, /Install Shared Lists as a WebApp/);
@@ -99,12 +102,16 @@ test("PWA shell build caches only safe static assets", async () => {
   assert.match(app, /function maybeShowOverviewDemo\(/);
   assert.match(app, /function openOverviewDemo\(/);
   assert.match(sourceApp, /title: "Share the list"/);
-  assert.match(sourceApp, /cue: "Tap Share"/);
+  assert.match(sourceApp, /cue: "Tap share"/);
   assert.match(sourceApp, /pos: "right:5px;top:94px"/);
   assert.match(sourceApp, /title: "Finish tasks"/);
   assert.match(sourceApp, /title: "Choose a theme"/);
   assert.match(sourceApp, /cue: "Tap calendar"/);
-  assert.match(sourceApp, /cue: "Tap Settings"/);
+  assert.match(sourceApp, /cue: "Tap gear"/);
+  assert.doesNotMatch(sourceApp, /setTimeout\(nextOverviewStep/);
+  assert.match(sourceApp, /closest\("\.overview-demo"\)\) nextOverviewStep\(\)/);
+  assert.match(sourceApp, /mergeMembersPreservingCurrentOrder/);
+  assert.doesNotMatch(sourceApp, /a\.can_share && !b\.can_share/);
   assert.match(sourceApp, /if \(!maybeShowOverviewDemo\(\)\) maybeShowHomeScreenGuide\(\);/);
   assert.match(app, /function installGuideModeForDevice\(/);
   assert.match(app, /function installGuideDescription\(/);
@@ -119,6 +126,7 @@ test("PWA shell build caches only safe static assets", async () => {
   assert.match(sourceStyles, /\.overview-action-callout/);
   assert.match(sourceStyles, /background:\s*#ffd400/);
   assert.match(sourceStyles, /\.overview-demo\[data-overview-step="share"\] \.demo-share/);
+  assert.match(sourceStyles, /\.overview-mini-footer\s*\{[\s\S]*grid-template-columns:\s*minmax\(0,\s*1fr\) 34px/);
   assert.match(sourceStyles, /:root\[data-theme="dark"\] \.count-pill/);
   assert.match(sourceStyles, /@keyframes overview-pulse/);
   assert.match(sourceStyles, /\.chrome-address-visual/);
@@ -181,7 +189,8 @@ test("PWA shell build caches only safe static assets", async () => {
   assert.match(license, /The public starter lives at/);
   assert.match(license, /https:\/\/github\.com\/CBruney\/shared-lists-starter/);
   assert.doesNotMatch(license, /public starter is not published yet/);
-  assert.match(license, /Clone the public starter repo to build your own version/);
+  assert.match(license, /Build your own version by cloning the public starter repo using the Apache 2\.0 License\./);
+  assert.doesNotMatch(license, /Public releases are prepared from a sanitized export/);
   assert.doesNotMatch(license, /npm run export:public/);
   assert.match(license, /https:\/\/www\.apache\.org\/licenses\/LICENSE-2\.0/);
 
@@ -193,7 +202,7 @@ test("PWA shell build caches only safe static assets", async () => {
 
   assert.equal((await stat("dist/client/app.js")).size < 145_000, true);
   assert.equal((await stat("dist/client/styles.css")).size < 55_000, true);
-  assert.equal((await stat("dist/client/index.html")).size < 27_500, true);
+  assert.equal((await stat("dist/client/index.html")).size < 28_500, true);
 
   const cachedShellText = [
     app,

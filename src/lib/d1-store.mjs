@@ -484,7 +484,7 @@ export class D1Store {
          INNER JOIN users u ON u.email = lm.email
          WHERE lm.list_id = ?
          ORDER BY CASE lm.role WHEN 'owner' THEN 0 ELSE 1 END,
-                  CASE WHEN lm.can_share THEN 0 ELSE 1 END,
+                  lm.created_at,
                   LOWER(u.display_name)`,
         row.id,
       );
@@ -818,7 +818,7 @@ export class D1Store {
        INNER JOIN users u ON u.email = lm.email
        WHERE lm.list_id = ?
        ORDER BY CASE lm.role WHEN 'owner' THEN 0 ELSE 1 END,
-                CASE WHEN lm.can_share THEN 0 ELSE 1 END,
+                lm.created_at,
                 LOWER(u.display_name)`,
       listId,
     ).then((members) => members.map(memberView));

@@ -43,6 +43,7 @@ test("hot path indexes are captured in D1 schema and migrations", async () => {
   assert.doesNotMatch(store, /ON CONFLICT\(email\) DO UPDATE SET\s*display_name = excluded\.display_name,\s*updated_at = CURRENT_TIMESTAMP/);
   assert.match(store, /ALTER TABLE list_members ADD COLUMN marker_color/);
   assert.match(store, /ALTER TABLE list_members ADD COLUMN marker_icon/);
+  assert.doesNotMatch(store, /CASE WHEN lm\.can_share THEN 0 ELSE 1 END/);
 });
 
 test("active tasks expose persisted desktop drag and mobile hold-move reorder", async () => {
@@ -370,8 +371,11 @@ test("sharing panel stays focused while settings replays the home screen guide",
   assert.match(html, /Shared Lists overview/);
   assert.match(html, /id="overview-action-callout"/);
   assert.match(html, /overview-mini-calendar demo-date/);
+  assert.match(html, /overview-mini-action demo-copy"><svg/);
+  assert.match(html, /overview-mini-action demo-share"><svg/);
+  assert.match(html, /overview-mini-settings demo-theme"><svg/);
   assert.match(html, /Feedback/);
-  assert.match(html, /Settings/);
+  assert.doesNotMatch(html, /<span class="demo-theme">Settings<\/span>/);
   assert.match(html, /id="home-screen-guide"/);
   assert.match(html, /Install Shared Lists as a WebApp/);
   assert.match(html, /desktop-install-steps/);
@@ -386,7 +390,10 @@ test("sharing panel stays focused while settings replays the home screen guide",
   assert.match(app, /function renderOverviewDemo/);
   assert.match(app, /overviewActionCallout\.style\.cssText = step\.pos/);
   assert.match(app, /cue: "Tap calendar"/);
-  assert.match(app, /cue: "Tap Settings"/);
+  assert.match(app, /cue: "Tap gear"/);
+  assert.doesNotMatch(app, /setTimeout\(nextOverviewStep/);
+  assert.match(app, /mergeMembersPreservingCurrentOrder/);
+  assert.doesNotMatch(app, /a\.can_share && !b\.can_share/);
   assert.match(app, /overviewDemoClose\.addEventListener\("click", completeOverviewDemo\)/);
   assert.match(app, /overviewDemoDone\.addEventListener\("click", completeOverviewDemo\)/);
   assert.match(app, /state\.overviewDemoOpen\) completeOverviewDemo\(\)/);
@@ -407,6 +414,7 @@ test("sharing panel stays focused while settings replays the home screen guide",
   assert.match(styles, /\.overview-action-callout/);
   assert.match(styles, /background:\s*#ffd400/);
   assert.match(styles, /\.overview-mini-app/);
+  assert.match(styles, /\.overview-mini-footer\s*\{[\s\S]*grid-template-columns:\s*minmax\(0,\s*1fr\) 34px/);
   assert.match(styles, /:root\[data-theme="dark"\] \.count-pill/);
   assert.match(styles, /@keyframes overview-pulse/);
   assert.match(styles, /:root\[data-theme="dark"\]/);
