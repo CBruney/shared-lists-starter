@@ -369,7 +369,10 @@ test("sharing panel stays focused while settings replays the home screen guide",
   assert.match(html, /id="overview-demo"/);
   assert.match(html, /Shared Lists overview/);
   assert.match(html, /id="home-screen-guide"/);
+  assert.match(html, /Install Shared Lists as a WebApp/);
   assert.match(html, /desktop-install-steps/);
+  assert.match(html, /Open Shared Lists in Chrome on your computer\./);
+  assert.match(html, /Click the Install WebApp icon on the right side of the Chrome address bar\./);
   assert.match(html, /Tap the Share button in your browser\./);
   assert.match(html, /View More/);
   assert.match(html, /Add to Home Screen/);
@@ -390,12 +393,14 @@ test("sharing panel stays focused while settings replays the home screen guide",
   assert.match(app, /function installGuideModeForDevice/);
   assert.match(styles, /\.guide-bounce-arrow/);
   assert.match(styles, /\.guide-close-button\s*\{[\s\S]*z-index:\s*2/);
+  assert.match(styles, /\.chrome-address-visual/);
+  assert.match(styles, /\.chrome-install-icon/);
+  assert.match(styles, /\.desktop-install-confirm/);
   assert.match(styles, /\.overview-demo/);
   assert.match(styles, /\.overview-mini-app/);
   assert.match(styles, /@keyframes overview-pulse/);
   assert.match(styles, /:root\[data-theme="dark"\]/);
   assert.match(styles, /\.segmented-control/);
-  assert.match(styles, /\.desktop-install-visual/);
   assert.match(styles, /--mobile-header-bg/);
   assert.match(styles, /\.task-header\s*\{[\s\S]*background:\s*var\(--mobile-header-bg\)/);
   assert.match(styles, /\.settings-auth-row \.settings-row-icon/);

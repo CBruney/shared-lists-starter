@@ -51,12 +51,16 @@ test("PWA shell build caches only safe static assets", async () => {
   assert.match(index, /demo-theme/);
   assert.match(index, /id="home-screen-guide"/);
   assert.match(index, /Install Shared Lists as an app/);
+  assert.match(index, /Install Shared Lists as a WebApp/);
   assert.match(index, /Tap the Share button in your browser\./);
   assert.match(index, /View More/);
   assert.match(index, /Add to Home Screen/);
   assert.match(index, /desktop-install-steps/);
-  assert.match(index, /Open Shared Lists in Chrome, Edge, or Safari\./);
-  assert.match(index, /Choose Install App from the address bar or browser menu\./);
+  assert.match(index, /Open Shared Lists in Chrome on your computer\./);
+  assert.match(index, /Install WebApp/);
+  assert.match(index, /Click the Install WebApp icon on the right side of the Chrome address bar\./);
+  assert.match(index, /Choose Install to open Shared Lists in its own WebApp window\./);
+  assert.match(index, /class="chrome-install-icon"/);
   assert.match(index, /<meta name="description" content="Share and collaborate"/);
   assert.match(index, /property="og:title" content="Shared Lists"/);
   assert.match(index, /property="og:description" content="Share and collaborate"/);
@@ -96,6 +100,7 @@ test("PWA shell build caches only safe static assets", async () => {
   assert.match(sourceApp, /if \(!maybeShowOverviewDemo\(\)\) maybeShowHomeScreenGuide\(\);/);
   assert.match(app, /function installGuideModeForDevice\(/);
   assert.match(app, /function installGuideDescription\(/);
+  assert.match(app, /Show the desktop WebApp install guide/);
   assert.match(app, /dataset\.guideMode/);
   assert.doesNotMatch(app, /setTimeout\(\(\) => fetchPeopleSuggestions\(query\), 140\)/);
   const sourceStyles = await readFile("src/styles.css", "utf8");
@@ -105,7 +110,10 @@ test("PWA shell build caches only safe static assets", async () => {
   assert.match(sourceStyles, /\.overview-demo/);
   assert.match(sourceStyles, /\.overview-demo\[data-overview-step="share"\] \.demo-share/);
   assert.match(sourceStyles, /@keyframes overview-pulse/);
-  assert.match(sourceStyles, /\.desktop-install-visual/);
+  assert.match(sourceStyles, /\.chrome-address-visual/);
+  assert.match(sourceStyles, /\.chrome-install-target/);
+  assert.match(sourceStyles, /\.chrome-install-icon/);
+  assert.match(sourceStyles, /\.desktop-install-confirm/);
   assert.match(sourceStyles, /--browser-chrome/);
   assert.match(sourceStyles, /--mobile-header-bg/);
   assert.match(sourceStyles, /\.task-header\s*\{[\s\S]*background:\s*var\(--mobile-header-bg\)/);
@@ -119,6 +127,7 @@ test("PWA shell build caches only safe static assets", async () => {
   assert.match(sourceStyles, /\.invite-status\.error/);
   assert.match(sourceStyles, /\.invite-status\.pending/);
   assert.match(sourceStyles, /\.home-screen-guide/);
+  assert.match(sourceStyles, /\.home-screen-guide-scrim\[data-guide-mode="desktop"\] \.desktop-install-title/);
   assert.match(sourceStyles, /\.home-screen-guide-scrim\[data-guide-mode="desktop"\] \.mobile-install-steps/);
   assert.match(sourceStyles, /\.home-screen-guide-scrim\[data-guide-mode="mobile"\] \.desktop-install-steps/);
   assert.match(sourceStyles, /\.guide-bounce-arrow/);

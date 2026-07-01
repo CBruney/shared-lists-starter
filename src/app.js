@@ -1256,7 +1256,7 @@ function installGuideModeForDevice() {
 
 function installGuideDescription() {
   return installGuideModeForDevice() === "desktop"
-    ? "Show the desktop install guide"
+    ? "Show the desktop WebApp install guide"
     : "Show the phone install guide";
 }
 

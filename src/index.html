@@ -394,7 +394,10 @@
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12" /></svg>
         </button>
         <img class="home-screen-app-icon" src="/apple-touch-icon.png" alt="" />
-        <h2 id="home-screen-guide-title">Install Shared Lists as an app</h2>
+        <h2 id="home-screen-guide-title">
+          <span class="mobile-install-title">Install Shared Lists as an app</span>
+          <span class="desktop-install-title">Install Shared Lists as a WebApp</span>
+        </h2>
         <ol class="home-screen-steps mobile-install-steps">
           <li>
             <div class="safari-bar-visual" aria-hidden="true">
@@ -423,28 +426,34 @@
         </ol>
         <ol class="home-screen-steps desktop-install-steps">
           <li>
-            <div class="desktop-install-visual" aria-hidden="true">
-              <span class="desktop-toolbar-pill">Shared Lists</span>
-              <span class="desktop-install-target">
+            <div class="chrome-address-visual" aria-hidden="true">
+              <span class="chrome-tab-chip">Chrome</span>
+              <span class="chrome-address-pill">
+                <svg viewBox="0 0 24 24"><path d="M7 10V7a5 5 0 0 1 10 0v3" /><path d="M6 10h12v10H6z" /></svg>
+                <span>shared-lists</span>
+              </span>
+              <span class="chrome-install-target">
                 <span class="guide-bounce-arrow"></span>
-                <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14" /><path d="M5 5h14v14H5z" /></svg>
+                <svg class="chrome-install-icon" viewBox="0 0 24 24"><path d="M5 5h14v11H5zM9 19h6M12 16v3M12 8v5m-2.5 2.5L12 13l2.5-2.5" /></svg>
               </span>
             </div>
-            <span>Open Shared Lists in Chrome, Edge, or Safari.</span>
+            <span>Open Shared Lists in Chrome on your computer.</span>
           </li>
           <li>
-            <div class="share-action-visual" aria-hidden="true">
-              <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14" /><path d="M5 5h14v14H5z" /></svg>
-              <span>Install App</span>
+            <div class="share-action-visual chrome-install-action" aria-hidden="true">
+              <svg class="chrome-install-icon" viewBox="0 0 24 24"><path d="M5 5h14v11H5zM9 19h6M12 16v3M12 8v5m-2.5 2.5L12 13l2.5-2.5" /></svg>
+              <span>Install WebApp</span>
             </div>
-            <span>Choose Install App from the address bar or browser menu.</span>
+            <span>Click the Install WebApp icon on the right side of the Chrome address bar.</span>
           </li>
           <li>
-            <div class="share-action-visual" aria-hidden="true">
+            <div class="share-action-visual desktop-install-confirm" aria-hidden="true">
+              <img src="/apple-touch-icon.png" alt="" />
+              <span>Shared Lists</span>
+              <strong>Install</strong>
               <svg viewBox="0 0 24 24"><path d="m5 12 4 4L19 6" /></svg>
-              <span>Install</span>
             </div>
-            <span>Confirm Install to open Shared Lists like a desktop app.</span>
+            <span>Choose Install to open Shared Lists in its own WebApp window.</span>
           </li>
         </ol>
         <div class="guide-actions">
