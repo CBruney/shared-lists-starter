@@ -436,6 +436,94 @@ export class D1Store {
     return rows.map(peopleIndexView);
   }
 
+  async searchPeopleForUser(userEmail, query, { limit = PEOPLE_SEARCH_LIMIT } = {}) {
+    const viewer = requireValidEmail(userEmail, "current user");
+    const normalized = normalizePeopleQuery(query);
+    if (normalized.length < 2) return [];
+    const cappedLimit = Math.min(Math.max(Number(limit) || PEOPLE_SEARCH_LIMIT, 1), PEOPLE_SEARCH_LIMIT);
+    const contains = `%${escapeSqlLike(normalized)}%`;
+    const prefix = `${escapeSqlLike(normalized)}%`;
+    const rows = await this.all(
+      `WITH visible_people AS (
+         SELECT DISTINCT
+           users.email,
+           users.display_name,
+           users.full_name,
+           users.slack_user_id,
+           users.slack_handle,
+           users.aliases_json,
+           users.profile_source,
+           users.profile_synced_at
+         FROM list_members viewer
+         INNER JOIN list_members peer ON peer.list_id = viewer.list_id
+         INNER JOIN users ON users.email = peer.email
+         WHERE viewer.email = ?
+           AND peer.email <> ?
+       )
+       SELECT email, display_name, full_name, slack_user_id, slack_handle, aliases_json, profile_source, profile_synced_at
+       FROM visible_people
+       WHERE LOWER(email) LIKE ? ESCAPE '\\'
+          OR LOWER(display_name) LIKE ? ESCAPE '\\'
+          OR LOWER(SUBSTR(email, 1, INSTR(email, '@') - 1)) LIKE ? ESCAPE '\\'
+          OR LOWER(COALESCE(full_name, '')) LIKE ? ESCAPE '\\'
+          OR LOWER(COALESCE(slack_handle, '')) LIKE ? ESCAPE '\\'
+          OR LOWER(COALESCE(aliases_json, '[]')) LIKE ? ESCAPE '\\'
+       ORDER BY
+         CASE
+           WHEN LOWER(email) = ? THEN 0
+           WHEN LOWER(SUBSTR(email, 1, INSTR(email, '@') - 1)) = ? THEN 0
+           WHEN LOWER(email) LIKE ? ESCAPE '\\' THEN 1
+           WHEN LOWER(SUBSTR(email, 1, INSTR(email, '@') - 1)) LIKE ? ESCAPE '\\' THEN 1
+           WHEN LOWER(COALESCE(full_name, '')) LIKE ? ESCAPE '\\' THEN 2
+           WHEN LOWER(display_name) LIKE ? ESCAPE '\\' THEN 2
+           WHEN LOWER(COALESCE(slack_handle, '')) LIKE ? ESCAPE '\\' THEN 2
+           WHEN LOWER(COALESCE(aliases_json, '[]')) LIKE ? ESCAPE '\\' THEN 2
+           ELSE 3
+         END,
+         LOWER(COALESCE(full_name, display_name)),
+         LOWER(email)
+       LIMIT ?`,
+      viewer,
+      viewer,
+      contains,
+      contains,
+      contains,
+      contains,
+      contains,
+      contains,
+      normalized,
+      normalized,
+      prefix,
+      prefix,
+      prefix,
+      prefix,
+      prefix,
+      prefix,
+      cappedLimit,
+    );
+    return rows.map(peopleSearchView);
+  }
+
+  async getPeopleIndexForUser(userEmail) {
+    const viewer = requireValidEmail(userEmail, "current user");
+    const rows = await this.all(
+      `WITH visible_people AS (
+         SELECT DISTINCT users.email, users.display_name, users.full_name, users.slack_handle, users.aliases_json
+         FROM list_members viewer
+         INNER JOIN list_members peer ON peer.list_id = viewer.list_id
+         INNER JOIN users ON users.email = peer.email
+         WHERE viewer.email = ?
+           AND peer.email <> ?
+       )
+       SELECT email, display_name, full_name, slack_handle, aliases_json
+       FROM visible_people
+       ORDER BY LOWER(COALESCE(full_name, display_name)), LOWER(email)`,
+      viewer,
+      viewer,
+    );
+    return rows.map(peopleIndexView);
+  }
+
   async searchPrivateContacts(ownerEmail, query, { provider = "google", limit = PEOPLE_SEARCH_LIMIT } = {}) {
     const owner = requireValidEmail(ownerEmail, "contact owner");
     const normalized = normalizePeopleQuery(query);

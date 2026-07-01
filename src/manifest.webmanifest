@@ -1,7 +1,7 @@
 {
   "name": "Shared Lists",
   "short_name": "Shared Lists",
-  "description": "Shared 1:1 task lists for OpenAI.",
+  "description": "Private shared lists with list-level permissions.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",

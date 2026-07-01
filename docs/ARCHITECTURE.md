@@ -43,11 +43,13 @@ The API returns list data only when the signed-in email is a member of that list
 OpenAI Sites:
 
 - Reads the authenticated email from the Sites request header.
+- Ignores Cloudflare Access-only credentials.
 - Works well when the app is deployed through OpenAI Sites.
 
 Cloudflare Access:
 
 - Verifies a Cloudflare Access JWT.
+- Ignores OpenAI Sites identity headers.
 - Requires `CLOUDFLARE_ACCESS_TEAM_DOMAIN` and `CLOUDFLARE_ACCESS_AUD`.
 - Works well when you want to own the Cloudflare account, D1 database, Access policy, and DNS.
 
@@ -81,3 +83,5 @@ Optional features should be enabled by config or environment variables, not by e
 The public starter defaults to a plain shared-list app. Private integrations belong in adapters, forks, or host-specific config.
 
 Private Google Contacts autocomplete is optional. When enabled, contact data is scoped by signed-in user and merged into that user’s autocomplete results only.
+
+People autocomplete returns list peers plus the signed-in user's private contacts. It does not expose the full global `users` table to every authenticated browser.

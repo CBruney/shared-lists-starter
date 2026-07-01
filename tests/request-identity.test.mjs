@@ -81,6 +81,44 @@ test("request identity verifies Cloudflare Access JWTs when configured", async (
   assert.equal(email, "owner@local.test");
 });
 
+test("Cloudflare mode rejects a Sites email header without an Access JWT", async () => {
+  const request = new Request("https://shared-lists.invalid/api/session", {
+    headers: {
+      [OAI_AUTHENTICATED_USER_EMAIL_HEADER]: "spoofed@local.test",
+    },
+  });
+
+  const email = await resolveCurrentUserEmailFromRequest(request, {
+    authProvider: "cloudflare-access",
+    cloudflareAccess: {
+      teamDomain: "https://team.cloudflareaccess.com",
+      policyAud: "policy-audience-id",
+      fetcher: async () => Response.json({ keys: [] }),
+    },
+  });
+
+  assert.equal(email, "");
+});
+
+test("OpenAI Sites mode rejects Cloudflare-only credentials", async () => {
+  const request = new Request("https://shared-lists.invalid/api/session", {
+    headers: {
+      [CLOUDFLARE_ACCESS_JWT_HEADER]: "header.payload.signature",
+    },
+  });
+
+  const email = await resolveCurrentUserEmailFromRequest(request, {
+    authProvider: "openai-sites",
+    cloudflareAccess: {
+      teamDomain: "https://team.cloudflareaccess.com",
+      policyAud: "policy-audience-id",
+      fetcher: async () => Response.json({ keys: [] }),
+    },
+  });
+
+  assert.equal(email, "");
+});
+
 async function signJwt(header, payload, privateKey) {
   const encodedHeader = base64UrlEncode(JSON.stringify(header));
   const encodedPayload = base64UrlEncode(JSON.stringify(payload));

@@ -8,12 +8,20 @@ const DEFAULT_LOCAL_USER_EMAIL = "local-user@local.test";
 const DEFAULT_AUTH_PROVIDER = "openai-sites";
 
 export function currentUserEmailFromRequest(request, { defaultLocalUserEmail = DEFAULT_LOCAL_USER_EMAIL } = {}) {
-  const authenticated = request.headers.get(OAI_AUTHENTICATED_USER_EMAIL_HEADER);
+  const authenticated = openAiSitesEmailFromRequest(request);
   if (authenticated) return authenticated;
 
+  return localDevEmailFromRequest(request, { defaultLocalUserEmail });
+}
+
+function openAiSitesEmailFromRequest(request) {
+  return normalizeEmailHeader(request.headers.get(OAI_AUTHENTICATED_USER_EMAIL_HEADER));
+}
+
+function localDevEmailFromRequest(request, { defaultLocalUserEmail = DEFAULT_LOCAL_USER_EMAIL } = {}) {
   const url = new URL(request.url);
   if (LOCAL_HOSTS.has(url.hostname)) {
-    return request.headers.get(DEV_USER_EMAIL_HEADER) || defaultLocalUserEmail;
+    return normalizeEmailHeader(request.headers.get(DEV_USER_EMAIL_HEADER)) || normalizeEmailHeader(defaultLocalUserEmail);
   }
 
   return "";
@@ -27,11 +35,14 @@ export async function resolveCurrentUserEmailFromRequest(
     cloudflareAccess = {},
   } = {},
 ) {
-  const localOrSitesEmail = currentUserEmailFromRequest(request, { defaultLocalUserEmail });
-  if (localOrSitesEmail) return localOrSitesEmail;
+  const localDevEmail = localDevEmailFromRequest(request, { defaultLocalUserEmail });
+  if (localDevEmail) return localDevEmail;
 
-  if (normalizeAuthProvider(authProvider) !== "cloudflare-access") return "";
-  return cloudflareAccessEmailFromRequest(request, cloudflareAccess);
+  if (normalizeAuthProvider(authProvider) === "cloudflare-access") {
+    return cloudflareAccessEmailFromRequest(request, cloudflareAccess);
+  }
+
+  return openAiSitesEmailFromRequest(request);
 }
 
 export async function cloudflareAccessEmailFromRequest(
@@ -78,6 +89,10 @@ export async function cloudflareAccessEmailFromRequest(
 function normalizeAuthProvider(value) {
   const provider = String(value || DEFAULT_AUTH_PROVIDER).trim().toLowerCase();
   return provider === "cloudflare-access" ? provider : DEFAULT_AUTH_PROVIDER;
+}
+
+function normalizeEmailHeader(value) {
+  return String(value || "").trim().toLowerCase();
 }
 
 function cloudflareAccessJwtFromRequest(request) {

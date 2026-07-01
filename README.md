@@ -12,11 +12,22 @@ The app is intentionally plain:
 - Help users install the app to their phone or desktop.
 - Keep list access in the app, not in a manually managed audience file.
 
-This repository is generated from a private working app through a sanitizing export. The public starter does not include private deployment IDs, personal emails, live URLs, private contacts, or private integration docs.
+This repository is the reusable starter for the app. It should not contain private deployment IDs, personal emails, live private URLs, private contacts, secrets, or deployment-specific integration details.
+
+## Screenshots
+
+![Shared Lists desktop screenshot](docs/assets/screenshots/desktop.jpg)
+
+![Shared Lists mobile screenshot](docs/assets/screenshots/mobile.jpg)
 
 ## Quick Start
 
 Use this when you want to run the app locally before choosing a host.
+
+Required runtime:
+
+- Node `>=24 <27`
+- npm `>=10`
 
 Clone the repository URL shown by GitHub, then run:
 
@@ -71,9 +82,9 @@ Edit `shared-lists.config.json` for user-visible and client-side settings:
 }
 ```
 
-Use host environment variables for server-side settings. Start with `.env.example`; do not commit real secrets or private deployment IDs. Optional admin and integration surfaces, including access audit, people import, quick-action intake, and private Google Contacts autocomplete, are disabled by config until you turn them on.
+Use host environment variables for server-side settings. For local development, copy `.env.example` to `.env`; the dev server loads `.env` automatically. Do not commit real secrets or private deployment IDs. Optional admin and integration surfaces, including access audit, people import, quick-action intake, and private Google Contacts autocomplete, are disabled by config until you turn them on.
 
-Set `publicUrl` and `feedbackEmail` only when you have real values. If `feedbackEmail` is empty, the app hides the Feedback button.
+Set `publicUrl` and `feedbackEmail` only when you have real values. If `feedbackEmail` is empty, the app hides Feedback and Help/questions.
 
 ## Pick A Hosting Lane
 
@@ -95,6 +106,8 @@ Detailed steps: [`docs/DEPLOY_OPENAI_SITES.md`](docs/DEPLOY_OPENAI_SITES.md).
 ### Option B: Cloudflare Workers + D1 + Cloudflare Access
 
 Choose this if you want to own the Cloudflare account, DNS, Access policy, and D1 database.
+
+Current status: the Cloudflare lane documents the intended shape, but it is not yet executable end to end. The repo still needs working Cloudflare deploy/migrate/rollback commands and a real production-system smoke test. Those gaps are tracked in [`docs/DEPLOY_CLOUDFLARE.md`](docs/DEPLOY_CLOUDFLARE.md) and [`docs/ROADMAP.md`](docs/ROADMAP.md).
 
 1. Copy `wrangler.toml.example` to `wrangler.toml`.
 2. Create a Cloudflare D1 database.
@@ -138,6 +151,8 @@ Detailed steps: [`docs/FIRST_OWNER_SETUP.md`](docs/FIRST_OWNER_SETUP.md).
 
 Yes. The normal path is `git clone`, `npm ci`, `npm run dev`, `npm run check`, then deploy through either OpenAI Sites or Cloudflare.
 
+For today, OpenAI Sites is the more complete deployment lane. Cloudflare is a documented lane with unfinished deployment automation.
+
 ### Can I point Codex, Claude Code, or another coding agent at this repo?
 
 Yes. Give the agent [`AGENT_README.md`](AGENT_README.md) and ask it to follow the lane you choose. The repo includes `AGENTS.md` and `CLAUDE.md` with project rules for agentic setup and deployment.
@@ -154,13 +169,34 @@ Open the list, tap Share, add the person's email, then copy or send the list lin
 
 Optionally, yes. Private Google Contacts autocomplete is off by default. If a deployer enables it and a user connects their own Google account in Settings, only that user sees those private suggestions. Everyone can still share by typing a full email address.
 
+The shared people directory is scoped to people who already share at least one list with the signed-in user. The app does not send the full global user table to every browser.
+
 ### Can a member add other people?
 
 The list owner can grant sharing permission to a member. Members with sharing permission can add people to that list.
 
 ### What is not included?
 
-The public starter does not include private personal automations, private deployment IDs, old personal git history, or private personal integrations. Optional external integrations should live in a separate adapter or fork and stay disabled by config until a deployer intentionally enables them.
+The starter does not include a hosted public demo, production Cloudflare automation, a production-system smoke test, private personal automations, private deployment IDs, personal git history, or private personal integrations. Optional external integrations should live in a separate adapter or fork and stay disabled by config until a deployer intentionally enables them.
+
+## What An Open-Source Maintainer Would Expect
+
+The repo includes the core public-project surface:
+
+- Apache-2.0 license.
+- README, changelog, roadmap, support, security, conduct, governance, and maintainer docs.
+- GitHub Actions CI, Dependabot, issue templates, pull request template, and CODEOWNERS.
+- Local development instructions.
+- Deployment docs for OpenAI Sites and a marked-incomplete Cloudflare lane.
+- Privacy/data-lifecycle docs.
+- Accessibility target and release checklist.
+- Desktop and mobile screenshots.
+
+Important follow-ups before a production Cloudflare release:
+
+- Make the Cloudflare instructions executable.
+- Test the production system, not just its components.
+- Add a hosted demo only after it has dedicated non-production storage and synthetic data.
 
 ### Which license does this use?
 
@@ -196,3 +232,5 @@ git diff --check
 Never commit `.env`, `wrangler.toml` with real IDs, access tokens, production database exports, private emails, or deployment credentials.
 
 For public repository settings, see [`docs/GITHUB_SETUP.md`](docs/GITHUB_SETUP.md).
+
+For questions, use GitHub Discussions or the Help/questions action when a deployer has configured a support email.

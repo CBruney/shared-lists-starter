@@ -2,9 +2,9 @@
 
 This starter is built around four phases.
 
-## Phase 1: Clean Public Export
+## Phase 1: Clean Public Starter
 
-Goal: publish a sanitized repo that can be cloned safely.
+Goal: keep the repo safe to clone, fork, and deploy.
 
 Included:
 
@@ -13,7 +13,7 @@ Included:
 - Sanitized config.
 - No private deployment IDs.
 - No personal emails or live private URLs.
-- Public export test.
+- Public release checks.
 
 ## Phase 2: Install And Run
 
@@ -41,6 +41,11 @@ Included:
 - Cloudflare Access identity verification.
 - First-owner setup endpoint.
 
+Still needed:
+
+- Make the Cloudflare instructions executable.
+- Test the production system, not just its components.
+
 ## Phase 4: Community And Maintenance
 
 Goal: make the project understandable and maintainable for outside users.
@@ -66,7 +71,7 @@ Included:
 
 Good future work:
 
-- Add a fully automated Cloudflare deploy smoke test.
-- Capture real screenshots from the local demo or a dedicated hosted demo.
+- Add working Cloudflare deploy, migrate, smoke, and rollback commands.
+- Add a fully automated Cloudflare deploy smoke test with a disposable D1 database.
 - Package the shared ACL/store layer as a real workspace package.
 - Add a hosted demo with non-production storage and clearly synthetic data.

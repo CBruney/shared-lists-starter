@@ -1,7 +1,9 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { execFile } from "node:child_process";
-import { readFile, stat } from "node:fs/promises";
+import { mkdtemp, readFile, stat, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { promisify } from "node:util";
 import vm from "node:vm";
 
@@ -12,6 +14,8 @@ test("PWA shell build caches only safe static assets", async () => {
 
   const manifest = JSON.parse(await readFile("dist/client/manifest.webmanifest", "utf8"));
   assert.equal(manifest.name, "Shared Lists");
+  assert.equal(manifest.description, "Private shared lists with list-level permissions.");
+  assert.doesNotMatch(manifest.description, /OpenAI/);
   assert.equal(manifest.display, "standalone");
   assert.deepEqual(manifest.icons.map((icon) => icon.sizes).sort(), ["180x180", "192x192", "512x512"]);
   assert.equal(manifest.icons.find((icon) => icon.sizes === "180x180").src.startsWith("data:image/png;base64,"), true);
@@ -38,6 +42,8 @@ test("PWA shell build caches only safe static assets", async () => {
   assert.match(index, /id="show-home-screen-guide-button"/);
   assert.match(index, /Install as app/);
   assert.match(index, /id="install-app-settings-description"/);
+  assert.match(index, /id="help-question-button" type="button" hidden/);
+  assert.match(index, /Help \/ questions/);
   assert.match(index, /id="google-contacts-settings-row" hidden/);
   assert.match(index, /Google Contacts/);
   assert.match(index, /Optional private autocomplete/);
@@ -85,6 +91,8 @@ test("PWA shell build caches only safe static assets", async () => {
   assert.match(sourceApp, /features\.quickActionBridge/);
   assert.match(sourceApp, /if \(!appConfig\.features\.quickActionBridge\) return/);
   assert.match(sourceApp, /\/api\/integrations\/quick-actions/);
+  assert.match(sourceApp, /body:\s*\{\s*source: payload\.source \|\| "quick-actions"/);
+  assert.doesNotMatch(sourceApp, /body:\s*JSON\.stringify\(\{\s*source: payload\.source \|\| "quick-actions"/);
   assert.match(app, /class="member-identity"/);
   assert.match(sourceApp, /Added \$\{email\} to \$\{state\.active\.list\.title\}\./);
   assert.match(sourceApp, /\$\{email\} is already on this list\./);
@@ -126,6 +134,8 @@ test("PWA shell build caches only safe static assets", async () => {
   assert.match(sourceApp, /if \(!maybeShowOverviewDemo\(\)\) maybeShowHomeScreenGuide\(\);/);
   assert.match(app, /function installGuideModeForDevice\(/);
   assert.match(app, /function installGuideDescription\(/);
+  assert.match(app, /function openHelpQuestion\(/);
+  assert.match(app, /Shared Lists help question/);
   assert.match(app, /Show the desktop WebApp install guide/);
   assert.match(app, /dataset\.guideMode/);
   assert.doesNotMatch(app, /setTimeout\(\(\) => fetchPeopleSuggestions\(query\), 140\)/);
@@ -225,6 +235,37 @@ test("PWA shell build caches only safe static assets", async () => {
   for (const privateText of ["admin@local.test", "editor@local.test", "external-owner@local.test", "Editor checklist", "Planning review", "Seeded task text"]) {
     assert.equal(cachedShellText.includes(privateText), false);
   }
+
+  const configDir = await mkdtemp(join(tmpdir(), "shared-lists-config-"));
+  const configPath = join(configDir, "shared-lists.config.json");
+  await writeFile(configPath, JSON.stringify({
+    appName: "Family Tasks",
+    publicUrl: "https://lists.example.com/app",
+    feedbackEmail: "help@example.com",
+    authProvider: "openai-sites",
+    features: {
+      quickActionBridge: false,
+      accessAudit: false,
+      peopleImport: false,
+      privateGoogleContacts: false,
+    },
+    quickActionBridge: { allowedOrigins: [] },
+  }, null, 2));
+  await execFileAsync("node", ["scripts/build.mjs"], {
+    env: { ...process.env, SHARED_LISTS_CONFIG_PATH: configPath },
+  });
+  const configuredIndex = await readFile("dist/client/index.html", "utf8");
+  const configuredManifest = JSON.parse(await readFile("dist/client/manifest.webmanifest", "utf8"));
+  assert.match(configuredIndex, /<title>Family Tasks<\/title>/);
+  assert.match(configuredIndex, /aria-label="Family Tasks"/);
+  assert.match(configuredIndex, /<h1>Family Tasks<\/h1>/);
+  assert.match(configuredIndex, /property="og:url" content="https:\/\/lists\.example\.com\/app"/);
+  assert.match(configuredIndex, /property="og:image" content="https:\/\/lists\.example\.com\/app\/social-preview\.png"/);
+  assert.match(configuredIndex, /name="twitter:image" content="https:\/\/lists\.example\.com\/app\/social-preview\.png"/);
+  assert.doesNotMatch(configuredIndex, /https:\/\/lists\.example\.com\/app<\/[a-z]/);
+  assert.doesNotMatch(configuredIndex, /<https:\/\/lists\.example\.com\/app/);
+  assert.equal(configuredManifest.name, "Family Tasks");
+  assert.equal(configuredManifest.description, "Private shared lists with list-level permissions.");
 });
 
 test("service worker never intercepts page navigation", async () => {

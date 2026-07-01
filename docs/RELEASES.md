@@ -19,14 +19,17 @@ Included:
 - Install-as-app guidance for mobile and desktop users.
 - First-owner setup for fresh deployments.
 - OpenAI Sites setup docs.
-- Cloudflare Workers + D1 + Cloudflare Access setup docs.
+- Cloudflare Workers + D1 + Cloudflare Access design docs, marked incomplete for executable deployment.
+- Scoped people autocomplete that returns list peers and private contacts, not the full user table.
+- Provider-isolated auth: OpenAI Sites headers and Cloudflare Access JWTs are not interchangeable.
+- Privacy/data-lifecycle, accessibility, governance, maintainer, and code-owner docs.
+- Desktop and mobile screenshots.
 - CI, Dependabot config, issue templates, security policy, support policy, and contribution guide.
 
 Known limits:
 
 - No hosted public demo yet; use the local demo.
-- No automated end-to-end deploy smoke test yet.
+- Cloudflare deploy/migrate/smoke/rollback commands are not implemented yet.
+- No automated production-system deploy smoke test yet.
 - No published package for the shared core yet.
 - No guaranteed support channel.
-
-Before publishing this release publicly, create a clean public repo from the sanitized export. Do not make a private working repo public.

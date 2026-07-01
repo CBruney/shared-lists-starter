@@ -350,11 +350,17 @@ export class KnownPeopleProvider {
   }
 
   async search(query, options = {}) {
+    if (options.userEmail && typeof this.store.searchPeopleForUser === "function") {
+      return this.store.searchPeopleForUser(options.userEmail, query, options);
+    }
     if (typeof this.store.searchPeople !== "function") return [];
     return this.store.searchPeople(query, options);
   }
 
-  async index() {
+  async index(options = {}) {
+    if (options.userEmail && typeof this.store.getPeopleIndexForUser === "function") {
+      return this.store.getPeopleIndexForUser(options.userEmail, options);
+    }
     if (typeof this.store.getPeopleIndex !== "function") return [];
     return this.store.getPeopleIndex();
   }
@@ -495,6 +501,53 @@ export class MemoryStore {
     return Array.from(this.users.values())
       .sort((a, b) => String(a.full_name || a.display_name || a.email).localeCompare(String(b.full_name || b.display_name || b.email)))
       .map(peopleIndexView);
+  }
+
+  async searchPeopleForUser(userEmail, query, { limit = PEOPLE_SEARCH_LIMIT } = {}) {
+    const viewer = requireValidEmail(userEmail, "current user");
+    const normalized = normalizePeopleQuery(query);
+    if (normalized.length < 2) return [];
+    const cappedLimit = Math.min(Math.max(Number(limit) || PEOPLE_SEARCH_LIMIT, 1), PEOPLE_SEARCH_LIMIT);
+    return this.visiblePeopleForUser(viewer)
+      .filter((user) => {
+        const email = normalizeEmail(user.email);
+        const localPart = email.split("@")[0] || "";
+        const displayName = normalizePeopleQuery(user.display_name);
+        const fullName = normalizePeopleQuery(user.full_name);
+        const slackHandle = normalizePeopleQuery(user.slack_handle);
+        const aliases = parseAliases(user.aliases_json);
+        return email.includes(normalized)
+          || localPart.includes(normalized)
+          || displayName.includes(normalized)
+          || fullName.includes(normalized)
+          || slackHandle.includes(normalized)
+          || aliases.some((alias) => alias.includes(normalized));
+      })
+      .sort((a, b) => sortPeopleSearchResults(a, b, normalized))
+      .slice(0, cappedLimit)
+      .map(peopleSearchView);
+  }
+
+  async getPeopleIndexForUser(userEmail) {
+    const viewer = requireValidEmail(userEmail, "current user");
+    return this.visiblePeopleForUser(viewer)
+      .sort((a, b) => String(a.full_name || a.display_name || a.email).localeCompare(String(b.full_name || b.display_name || b.email)))
+      .map(peopleIndexView);
+  }
+
+  visiblePeopleForUser(userEmail) {
+    const viewer = normalizeEmail(userEmail);
+    const byEmail = new Map();
+    for (const members of this.members.values()) {
+      if (!members.has(viewer)) continue;
+      for (const member of members.values()) {
+        const email = normalizeEmail(member.email);
+        if (!email || email === viewer) continue;
+        const user = this.users.get(email);
+        if (user) byEmail.set(email, user);
+      }
+    }
+    return [...byEmail.values()];
   }
 
   async searchPrivateContacts(ownerEmail, query, { provider = "google", limit = PEOPLE_SEARCH_LIMIT } = {}) {

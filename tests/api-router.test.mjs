@@ -201,6 +201,20 @@ test("session returns identity, bootstrap persists users, and people search stay
   assert.deepEqual(bootstrapped.payload.groups, { owned: [], shared: [] });
   assert.equal(store.users.has("mobile-first@local.test"), true);
 
+  const teamList = await call(store, "/api/lists", {
+    method: "POST",
+    user: "admin@local.test",
+    body: { title: "Directory team" },
+  });
+  const teamListId = teamList.payload.list.id;
+  for (const email of ["directory-person@local.test", "alias-person@local.test", "email-match@local.test"]) {
+    await call(store, `/api/lists/${teamListId}/members`, {
+      method: "POST",
+      user: "admin@local.test",
+      body: { email },
+    });
+  }
+
   const noQuery = await call(store, "/api/people?q=", { user: "admin@local.test" });
   assert.equal(noQuery.status, 200);
   assert.deepEqual(noQuery.payload.people, []);
@@ -218,10 +232,15 @@ test("session returns identity, bootstrap persists users, and people search stay
 
   const index = await call(store, "/api/people/index", { user: "admin@local.test" });
   assert.equal(index.status, 200);
-  assert.equal(index.payload.people.length, 5);
+  assert.equal(index.payload.people.length, 3);
   assert.deepEqual(Object.keys(index.payload.people[0]).sort(), ["display_name", "email", "search_terms"]);
   assert.equal(index.payload.people.every((person) => person.email.endsWith("@local.test")), true);
   assert.equal(index.payload.people.some((person) => person.search_terms.includes("directory-person")), true);
+  assert.equal(index.payload.people.some((person) => person.email === "mobile-first@local.test"), false);
+
+  const unrelatedSearch = await call(store, "/api/people?q=directory", { user: "mobile-first@local.test" });
+  assert.equal(unrelatedSearch.status, 200);
+  assert.deepEqual(unrelatedSearch.payload.people, []);
 });
 
 test("private Google Contacts autocomplete is optional and scoped to the signed-in user", async () => {
@@ -340,6 +359,17 @@ test("owner-only people import enriches existing users and searches full names a
   assert.equal(imported.payload.created_count, 1);
   assert.equal(imported.payload.updated_count, 1);
 
+  const list = await call(store, "/api/lists", {
+    method: "POST",
+    user: "admin@local.test",
+    body: { title: "Profile test" },
+  });
+  await call(store, `/api/lists/${list.payload.list.id}/members`, {
+    method: "POST",
+    user: "admin@local.test",
+    body: { email: "profile-member@local.test" },
+  });
+
   const byFullName = await call(store, "/api/people?q=profile%20member");
   assert.equal(byFullName.payload.people[0].email, "profile-member@local.test");
   assert.equal(byFullName.payload.people[0].display_name, "Profile Member");
@@ -347,6 +377,9 @@ test("owner-only people import enriches existing users and searches full names a
   assert.equal(byImportedAlias.payload.people[0].email, "profile-member@local.test");
   const byHandle = await call(store, "/api/people?q=profile.mem");
   assert.equal(byHandle.payload.people[0].email, "profile-member@local.test");
+
+  const unsharedImportedPerson = await call(store, "/api/people?q=new%20person");
+  assert.deepEqual(unsharedImportedPerson.payload.people, []);
 
   await call(store, "/api/session", { user: "profile-member@local.test" });
   const afterSession = await call(store, "/api/people?q=profile%20member");
@@ -669,6 +702,18 @@ test("people search requires an authenticated valid identity and caps results", 
       "person9@local.test",
     ],
   });
+  const list = await call(store, "/api/lists", {
+    method: "POST",
+    user: "person0@local.test",
+    body: { title: "Large shared list" },
+  });
+  for (let index = 1; index < 10; index += 1) {
+    await call(store, `/api/lists/${list.payload.list.id}/members`, {
+      method: "POST",
+      user: "person0@local.test",
+      body: { email: `person${index}@local.test` },
+    });
+  }
 
   const malformed = await call(store, "/api/people?q=person", { user: "friend" });
   assert.equal(malformed.status, 400);
@@ -682,6 +727,7 @@ test("people search requires an authenticated valid identity and caps results", 
 
   const external = await call(store, "/api/people?q=person", { user: "visitor@local.test" });
   assert.equal(external.status, 200);
+  assert.deepEqual(external.payload.people, []);
 });
 
 test("structured logs capture outcomes without task text or raw actor email", async () => {

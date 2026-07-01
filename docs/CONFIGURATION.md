@@ -4,7 +4,7 @@ Use config files and environment variables for setup. Avoid source edits for nor
 
 ## Client Config
 
-`shared-lists.config.json` is read at build time and injected into the app shell.
+`shared-lists.config.json` is read at build time and injected into the app shell. `appName` also updates the document metadata and web manifest during the build.
 
 ```json
 {
@@ -26,9 +26,9 @@ Use config files and environment variables for setup. Avoid source edits for nor
 
 Fields:
 
-- `appName`: display name.
+- `appName`: display name used in the document title, app shell, social metadata, and web manifest.
 - `publicUrl`: production URL used for metadata. Leave blank until you have a real deployed URL.
-- `feedbackEmail`: recipient for the feedback mailto link. Leave blank to hide the Feedback button.
+- `feedbackEmail`: recipient for the feedback and Help/questions mailto links. Leave blank to hide both actions.
 - `authProvider`: `openai-sites` or `cloudflare-access`.
 - `features`: client-visible feature flags.
 - `quickActionBridge.allowedOrigins`: allowed browser origins for the optional quick-action bridge.
@@ -58,11 +58,15 @@ CLOUDFLARE_ACCESS_AUD=
 
 Set blank values in the host environment before production deploy. `DEV_DEFAULT_USER_EMAIL` is for local development only. `FIRST_OWNER_EMAILS` and `ACCESS_AUDIT_ADMINS` should contain real email addresses for the people allowed to use those actions. Cloudflare values should come from the Cloudflare Access application you create for this app.
 
+For local development, copy `.env.example` to `.env`; `npm run dev` loads `.env` automatically. Production hosts should use their native secret or environment-variable store.
+
 ## Auth Provider Values
 
 Use `openai-sites` for OpenAI Sites.
 
 Use `cloudflare-access` for Cloudflare Workers protected by Cloudflare Access.
+
+The configured provider is exclusive in production. OpenAI Sites headers are not accepted in Cloudflare mode, and Cloudflare Access JWTs are not accepted in OpenAI Sites mode.
 
 ## Optional Features
 

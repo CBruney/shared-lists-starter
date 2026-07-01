@@ -8,6 +8,7 @@ import { googleContactsConfig } from "../src/lib/google-contacts.mjs";
 
 const root = fileURLToPath(new URL("..", import.meta.url));
 const clientRoot = join(root, "src");
+await loadDotEnv(join(root, ".env"));
 const store = new MemoryStore();
 const defaultPort = Number(process.env.PORT || 8001);
 const host = process.env.HOST || "127.0.0.1";
@@ -101,6 +102,30 @@ async function readSharedListsConfig() {
   } catch {
     return {};
   }
+}
+
+async function loadDotEnv(file) {
+  let content = "";
+  try {
+    content = await readFile(file, "utf8");
+  } catch {
+    return;
+  }
+  for (const rawLine of content.split(/\r?\n/)) {
+    const line = rawLine.trim();
+    if (!line || line.startsWith("#") || !line.includes("=")) continue;
+    const [key, ...valueParts] = line.split("=");
+    const name = key.trim();
+    if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(name) || process.env[name] !== undefined) continue;
+    process.env[name] = unquoteEnvValue(valueParts.join("=").trim());
+  }
+}
+
+function unquoteEnvValue(value) {
+  if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) {
+    return value.slice(1, -1);
+  }
+  return value.replace(/\s+#.*$/, "").trim();
 }
 
 function injectSharedListsConfig(html) {

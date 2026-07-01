@@ -5,6 +5,19 @@
   "license": "Apache-2.0",
   "private": false,
   "type": "module",
+  "packageManager": "npm@11.12.1",
+  "engines": {
+    "node": ">=24 <27",
+    "npm": ">=10"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/CBruney/shared-lists-starter.git"
+  },
+  "homepage": "https://github.com/CBruney/shared-lists-starter#readme",
+  "bugs": {
+    "url": "https://github.com/CBruney/shared-lists-starter/issues"
+  },
   "scripts": {
     "dev": "node scripts/dev-server.mjs",
     "build": "node scripts/build.mjs",

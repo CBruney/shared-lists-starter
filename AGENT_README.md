@@ -64,12 +64,14 @@ Use this lane when the repo contains `.openai/hosting.json` and the user wants S
 
 Use this lane when the user wants Cloudflare ownership.
 
+Current status: this lane is not executable end to end. Do not claim a production Cloudflare deployment is ready until the repo has real deploy, migrate, smoke, and rollback commands and a disposable Worker + D1 rehearsal has passed.
+
 1. Copy `wrangler.toml.example` to `wrangler.toml`.
 2. Fill in `database_id`, `CLOUDFLARE_ACCESS_TEAM_DOMAIN`, `CLOUDFLARE_ACCESS_AUD`, and `FIRST_OWNER_EMAILS` with values from the user's Cloudflare account and real owner email list.
 3. Set `shared-lists.config.json` to `"authProvider": "cloudflare-access"`.
 4. Run `npm run check`.
 5. Run D1 migrations.
-6. Deploy with Wrangler.
+6. Deploy with Wrangler after adding the missing deployment script.
 7. Verify the Cloudflare Access policy protects the app URL.
 8. Run first-owner setup as the allowed owner.
 

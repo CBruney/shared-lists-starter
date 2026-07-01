@@ -1,6 +1,6 @@
-# Publication Checklist
+# Release Checklist
 
-Run this before making a public repo visible.
+Run this before each public release.
 
 ## Local Checks
 
@@ -24,15 +24,17 @@ The only acceptable matches should be in the private source repo, not in the gen
 
 - Add a repo description.
 - Add topics such as `shared-lists`, `pwa`, `cloudflare-workers`, `d1`, `openai-sites`.
+- Add the repo homepage.
 - Enable Dependabot or your preferred dependency monitor.
+- Enable GitHub Discussions.
 - Enable branch protection if accepting outside contributions.
 - Confirm GitHub Actions is enabled and the CI workflow passes.
-- Enable GitHub private vulnerability reporting, or add a real private security contact in `SECURITY.md`.
+- Enable GitHub private vulnerability reporting.
 - Review `docs/GITHUB_SETUP.md`.
 
 ## Release
 
 - Create an initial tag such as `v0.1.0`.
-- Keep the first public commit sanitized.
-- Do not flip a private working repo public if its history contains private material.
-- For later releases, publish a sanitized starter update from the private source repo or record that there was no public-template change.
+- Keep public commits free of private material.
+- Do not copy private deployment files into the starter.
+- Record whether each release changes runtime code, docs only, or repository settings.

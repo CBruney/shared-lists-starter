@@ -2,4 +2,4 @@ Shared Lists Starter
 
 This project is licensed under the Apache License, Version 2.0.
 
-The public starter is generated from a private working app through a sanitizing export process. Public releases should not include private deployment IDs, private URLs, personal emails, secrets, or private integration details.
+Public releases should not include private deployment IDs, private URLs, personal emails, secrets, database exports, or private integration details.

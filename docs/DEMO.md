@@ -2,6 +2,11 @@
 
 There is no hosted public demo for v0.1.0. The working demo is local and starts with an empty in-memory database.
 
+Screenshots:
+
+- Desktop: `docs/assets/screenshots/desktop.jpg`
+- Mobile: `docs/assets/screenshots/mobile.jpg`
+
 ```bash
 npm ci
 npm run dev

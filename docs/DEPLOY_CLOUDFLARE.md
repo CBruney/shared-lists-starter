@@ -2,6 +2,22 @@
 
 Use this lane when you want to own the Cloudflare account, D1 database, Access policy, and DNS.
 
+## Current Status
+
+This lane is **not yet executable end to end**.
+
+The app now isolates Cloudflare Access identity from OpenAI Sites identity, but the Cloudflare deployment procedure still needs work before a maintainer should follow it for real users.
+
+Not done yet:
+
+- Add working `npm` scripts for Cloudflare deploy, migration, smoke test, and rollback.
+- Pin and document the supported Wrangler version.
+- Confirm `wrangler.toml.example` matches current Wrangler migration configuration.
+- Replace OpenAI Sites sign-in and sign-out paths with provider-correct Cloudflare behavior.
+- Run a disposable production-like Worker + D1 rehearsal that covers migrations, authentication, first-owner setup, list permissions, deployment, and rollback.
+
+Use the steps below as a checklist for what the lane should do, not as a guaranteed copy-paste deployment guide.
+
 ## Prerequisites
 
 - Cloudflare account.
@@ -9,7 +25,7 @@ Use this lane when you want to own the Cloudflare account, D1 database, Access p
 - A Cloudflare Access application for your app domain.
 - A D1 database.
 
-## Steps
+## Intended Steps
 
 1. Copy the example config:
 
@@ -68,7 +84,8 @@ Use this lane when you want to own the Cloudflare account, D1 database, Access p
 9. Deploy:
 
    ```bash
-   npm run deploy:cloudflare
+   # Not implemented yet.
+   # Add a real script before using this lane for production.
    ```
 
 10. Protect the app URL with Cloudflare Access.

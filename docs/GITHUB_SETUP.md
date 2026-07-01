@@ -1,6 +1,6 @@
 # GitHub Setup
 
-Use this after creating the clean public repo. Do not apply these settings to a private working repo unless you want the same workflow limits there.
+Use this to keep the canonical starter repository ready for outside users.
 
 ## Repository
 
@@ -8,6 +8,8 @@ Use this after creating the clean public repo. Do not apply these settings to a 
 - Description: `Reusable starter for private shared lists with D1-style storage and list-level permissions.`
 - Topics: `shared-lists`, `pwa`, `cloudflare-workers`, `d1`, `openai-sites`
 - Default branch: `main`
+- Homepage: `https://github.com/CBruney/shared-lists-starter#readme`
+- Discussions: enabled
 
 ## Branch Protection
 
@@ -36,8 +38,12 @@ After the first public push, confirm that GitHub Actions and Dependabot are enab
 
 ## Security
 
-Enable private vulnerability reporting in GitHub repository settings before inviting outside users to file security reports.
+Enable private vulnerability reporting in GitHub repository settings. `SECURITY.md` points reporters to GitHub's private advisory form.
+
+## Discussions
+
+Enable GitHub Discussions for open-ended setup questions and community notes. Keep bug reports in Issues and confidential security reports in private vulnerability reporting.
 
 ## First Release
 
-Create the first public release from tag `v0.1.0` after confirming the public repo contains only the sanitized export.
+Keep the `v0.1.0` release notes aligned with `CHANGELOG.md`, `docs/RELEASES.md`, and the current starter docs.

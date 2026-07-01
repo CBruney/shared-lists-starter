@@ -8,4 +8,4 @@ Reusable core for Shared Lists:
 - access requests
 - D1 schema and store contracts
 
-The current implementation still lives in the private app source under `src/lib/`. Use `npm run export:public` to build the sanitized public starter until this package is split into compiled modules.
+The implementation currently lives in the root `src/lib/` modules. This package marks the intended reusable boundary for a future workspace split.

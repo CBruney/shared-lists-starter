@@ -603,7 +603,7 @@ async function activeListByIdForBootstrap(store, userEmail, listId) {
 
 async function peopleSearchForUser(provider, store, userEmail, query, privateContactsConfig) {
   const [knownPeople, privateContacts] = await Promise.all([
-    provider.search(query),
+    provider.search(query, { userEmail }),
     privateContactsSearchForUser(store, userEmail, query, privateContactsConfig),
   ]);
   return mergePeopleResults(knownPeople, privateContacts);
@@ -611,7 +611,7 @@ async function peopleSearchForUser(provider, store, userEmail, query, privateCon
 
 async function peopleIndexForUser(provider, store, userEmail, privateContactsConfig) {
   const [knownPeople, privateContacts] = await Promise.all([
-    provider.index(),
+    provider.index({ userEmail }),
     privateContactsIndexForUser(store, userEmail, privateContactsConfig),
   ]);
   return mergePeopleResults(knownPeople, privateContacts, { limit: 3000 });

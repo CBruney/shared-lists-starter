@@ -36,6 +36,7 @@ const feedbackTarget = {
   email: appConfig.feedbackEmail,
 };
 const feedbackSubject = "Shared Lists feedback";
+const helpQuestionSubject = "Shared Lists help question";
 
 const listSurfaceCacheMaxAgeMs = 7 * 24 * 60 * 60 * 1000;
 const listDetailCacheMaxAgeMs = 30 * 60 * 1000;
@@ -201,6 +202,7 @@ const els = {
   listNav: document.querySelector("#list-nav"),
   newListButton: document.querySelector("#new-list-button"),
   feedbackButton: document.querySelector("#feedback-button"),
+  helpQuestionButton: document.querySelector("#help-question-button"),
   settingsButton: document.querySelector("#settings-button"),
   settingsAuthAction: document.querySelector("#settings-auth-action"),
   settingsAuthIcon: document.querySelector("#settings-auth-icon"),
@@ -327,8 +329,11 @@ function bindEvents() {
   els.newListButton.addEventListener("click", openNewListDialog);
   if (feedbackTarget.email) {
     els.feedbackButton.addEventListener("click", openFeedback);
+    els.helpQuestionButton.hidden = false;
+    els.helpQuestionButton.addEventListener("click", openHelpQuestion);
   } else {
     els.feedbackButton.hidden = true;
+    els.helpQuestionButton.hidden = true;
   }
   els.newListForm.addEventListener("submit", createList);
   els.newListCancel.addEventListener("click", closeNewListDialog);
@@ -562,13 +567,13 @@ async function handleQuickActionBridge() {
   try {
     const result = await apiFetch("/api/integrations/quick-actions", {
       method: "POST",
-      body: JSON.stringify({
+      body: {
         source: payload.source || "quick-actions",
         external_id: payload.external_id,
         title: payload.title,
         due_date: payload.due_date || null,
         list_title: payload.list_title || "Quick Actions",
-      }),
+      },
     });
     postQuickActionBridgeResult(replyOrigin, {
       type: "shared-lists-quick-action-result",
@@ -1034,6 +1039,19 @@ function openFeedback() {
 
 function feedbackMailtoUrl(message) {
   return `mailto:${feedbackTarget.email}?subject=${encodeURIComponent(feedbackSubject)}&body=${encodeURIComponent(message)}`;
+}
+
+function openHelpQuestion() {
+  if (!feedbackTarget.email) {
+    showToast("Help is not configured");
+    return;
+  }
+  window.location.href = helpQuestionMailtoUrl(buildHelpQuestionMessage());
+  showToast("Opening email for your question");
+}
+
+function helpQuestionMailtoUrl(message) {
+  return `mailto:${feedbackTarget.email}?subject=${encodeURIComponent(helpQuestionSubject)}&body=${encodeURIComponent(message)}`;
 }
 
 function handleShareButton() {
@@ -5314,6 +5332,28 @@ function buildFeedbackMessage() {
   ].join("\n");
 }
 
+function buildHelpQuestionMessage() {
+  const userEmail = state.session?.email || currentDevUser() || "Unknown user";
+  const activeList = state.active?.list || null;
+  return [
+    "Question:",
+    "[What are you trying to set up or understand?]",
+    "",
+    "",
+    "",
+    "Context:",
+    "source: shared-lists",
+    "question_version: 1",
+    `generated_at: ${new Date().toISOString()}`,
+    `user_email: ${feedbackContextValue(userEmail)}`,
+    `active_list_id: ${feedbackContextValue(activeList?.id || "none")}`,
+    `active_list_title: ${feedbackContextValue(activeList?.title || "No active list")}`,
+    `app_origin: ${feedbackContextValue(window.location.origin)}`,
+    `page_url: ${feedbackContextValue(window.location.href)}`,
+    `user_agent: ${feedbackContextValue(window.navigator.userAgent)}`,
+  ].join("\n");
+}
+
 function feedbackContextValue(value) {
   const text = String(value ?? "").replace(/\s+/g, " ").trim();
   return text || "unknown";
@@ -5429,7 +5469,7 @@ function isLocalHost() {
 }
 
 function displayNameFromEmail(email) {
-  const localPart = String(email || "").split("@")[0] || "OpenAI teammate";
+  const localPart = String(email || "").split("@")[0] || "Shared Lists user";
   return localPart
     .split(/[._-]+/)
     .filter(Boolean)
