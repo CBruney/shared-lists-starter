@@ -379,8 +379,10 @@ test("sharing panel stays focused while settings replays the home screen guide",
   assert.match(app, /function renderOverviewDemo/);
   assert.match(app, /overviewDemoClose\.addEventListener\("click", completeOverviewDemo\)/);
   assert.match(app, /overviewDemoDone\.addEventListener\("click", completeOverviewDemo\)/);
+  assert.match(app, /state\.overviewDemoOpen\) completeOverviewDemo\(\)/);
   assert.match(app, /homeScreenGuideClose\.addEventListener\("click", completeHomeScreenGuide\)/);
   assert.match(app, /homeScreenGuideDone\.addEventListener\("click", completeHomeScreenGuide\)/);
+  assert.match(app, /state\.homeScreenGuideOpen\) completeHomeScreenGuide\(\)/);
   assert.match(app, /function shouldOfferHomeScreenGuide/);
   assert.match(app, /function isLikelyIosDevice/);
   assert.match(app, /sharedLists:theme:v1/);
