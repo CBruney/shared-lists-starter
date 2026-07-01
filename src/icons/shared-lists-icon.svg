@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" role="img" aria-labelledby="title">
+  <title>Shared Lists app icon</title>
+  <rect width="1024" height="1024" fill="#ffffff"/>
+  <rect width="1024" height="1024" rx="224" fill="#ffffff"/>
+  <rect x="1.5" y="1.5" width="1021" height="1021" rx="222.5" fill="none" stroke="#e5edf7" stroke-width="3"/>
+
+  <rect x="176" y="178" width="156" height="156" rx="28" fill="#1a73e8"/>
+  <path d="M214 256l31 31 58-66" fill="none" stroke="#ffffff" stroke-width="34" stroke-linecap="round" stroke-linejoin="round"/>
+  <rect x="183" y="423" width="142" height="142" rx="24" fill="#ffffff" stroke="#101828" stroke-width="24"/>
+  <rect x="183" y="666" width="142" height="142" rx="24" fill="#ffffff" stroke="#101828" stroke-width="24"/>
+
+  <rect x="424" y="223" width="266" height="34" rx="17" fill="#101828"/>
+  <rect x="424" y="289" width="194" height="26" rx="13" fill="#b4bdca"/>
+  <rect x="424" y="469" width="266" height="34" rx="17" fill="#101828"/>
+  <rect x="424" y="535" width="194" height="26" rx="13" fill="#b4bdca"/>
+  <rect x="424" y="713" width="238" height="34" rx="17" fill="#101828"/>
+  <rect x="424" y="779" width="194" height="26" rx="13" fill="#b4bdca"/>
+
+  <circle cx="802" cy="222" r="36" fill="#1a73e8"/>
+  <path d="M737 319c12-48 47-75 65-75s54 27 66 75" fill="#1a73e8"/>
+  <circle cx="802" cy="471" r="35" fill="#9aa6b5"/>
+  <path d="M739 567c12-47 46-73 63-73s51 26 63 73" fill="#9aa6b5"/>
+  <circle cx="802" cy="714" r="36" fill="#101828"/>
+  <path d="M737 811c12-48 47-75 65-75s54 27 66 75" fill="#101828"/>
+</svg>

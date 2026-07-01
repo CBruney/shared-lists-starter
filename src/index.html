@@ -1,0 +1,463 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Shared Lists</title>
+    <meta name="description" content="Share and collaborate" />
+    <meta name="theme-color" content="#ffffff" />
+    <meta name="apple-mobile-web-app-title" content="Shared Lists" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Shared Lists" />
+    <meta property="og:title" content="Shared Lists" />
+    <meta property="og:description" content="Share and collaborate" />
+    <meta property="og:url" content="/" />
+    <meta property="og:image" content="/social-preview.png" />
+    <meta property="og:image:secure_url" content="/social-preview.png" />
+    <meta property="og:image:type" content="image/png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="Shared Lists. Share and collaborate." />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Shared Lists" />
+    <meta name="twitter:description" content="Share and collaborate" />
+    <meta name="twitter:image" content="/social-preview.png" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+    <link rel="apple-touch-icon-precomposed" sizes="180x180" href="/apple-touch-icon.png" />
+    <link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192.png" />
+    <link rel="icon" type="image/png" sizes="512x512" href="/icons/icon-512.png" />
+    <script id="shared-lists-config" type="application/json">__SHARED_LISTS_CONFIG__</script>
+    <script>
+      (function () {
+        try {
+          var configNode = document.getElementById("shared-lists-config");
+          var rawConfig = configNode ? configNode.textContent.trim() : "";
+          window.SHARED_LISTS_CONFIG = rawConfig && rawConfig.charAt(0) === "{" ? JSON.parse(rawConfig) : {};
+        } catch {
+          window.SHARED_LISTS_CONFIG = {};
+        }
+      })();
+    </script>
+    <script>
+      (function () {
+        try {
+          var themeKey = "sharedLists:theme:v1";
+          var storedTheme = window.localStorage.getItem(themeKey);
+          var themePreference = storedTheme === "light" || storedTheme === "dark" || storedTheme === "system" ? storedTheme : "system";
+          var systemDark = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
+          var resolvedTheme = themePreference === "system" ? (systemDark ? "dark" : "light") : themePreference;
+          document.documentElement.dataset.themePreference = themePreference;
+          document.documentElement.dataset.theme = resolvedTheme;
+          var themeColor = document.querySelector('meta[name="theme-color"]');
+          if (themeColor) themeColor.setAttribute("content", resolvedTheme === "dark" ? "#111827" : "#ffffff");
+          if (window.localStorage.getItem("sharedLists:sidebarCollapsed:v1") === "true") {
+            document.documentElement.classList.add("sidebar-pref-collapsed");
+          }
+        } catch {
+        }
+      })();
+    </script>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body data-mobile-view="lists">
+    <main class="app-shell" aria-label="Shared Lists">
+      <button class="icon-button sidebar-restore-button" id="sidebar-restore-button" type="button" aria-label="Expand shared lists sidebar" aria-controls="list-nav" aria-expanded="false">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v14H4z" /><path d="M9 5v14" /><path d="m14 9 3 3-3 3" /></svg>
+      </button>
+      <aside class="sidebar" aria-label="List collection">
+        <div class="brand-row">
+          <button class="icon-button sidebar-toggle-button" id="sidebar-toggle-button" type="button" aria-label="Collapse shared lists sidebar" aria-controls="list-nav" aria-expanded="true">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v14H4z" /><path d="M9 5v14" /><path d="m16 9-3 3 3 3" /></svg>
+          </button>
+          <div class="brand-mark" aria-hidden="true">
+            <img src="/apple-touch-icon.png" alt="" />
+          </div>
+          <div>
+            <h1>Shared Lists</h1>
+            <p id="current-user-label">Loading...</p>
+          </div>
+        </div>
+
+        <select id="dev-user-switcher" class="dev-user-switcher" hidden aria-label="View as"></select>
+
+        <div class="sidebar-actions">
+          <button class="icon-button primary" id="new-list-button" type="button" aria-label="Create new shared list">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>
+          </button>
+        </div>
+
+        <nav id="list-nav" class="list-nav" aria-label="Lists">
+          <div class="loading-block">
+            <span class="loading-line wide"></span>
+            <span class="loading-line"></span>
+            <span class="loading-line short"></span>
+          </div>
+        </nav>
+
+        <div class="sidebar-footer">
+          <div class="sidebar-footer-actions">
+            <button class="icon-text-button feedback-button" id="feedback-button" type="button" aria-label="Give feedback">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4Z" /><path d="M8 9h8M8 13h5" /></svg>
+              <span class="feedback-button-text">Feedback</span>
+            </button>
+            <button class="icon-button settings-button" id="settings-button" type="button" aria-label="Settings" aria-controls="settings-dialog">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12.2 2h-.4a2 2 0 0 0-2 2v.2a2 2 0 0 1-1 1.7l-.4.2a2 2 0 0 1-2 0l-.2-.1a2 2 0 0 0-2.7.7l-.2.4a2 2 0 0 0 .7 2.7l.2.1a2 2 0 0 1 1 1.7v.5a2 2 0 0 1-1 1.7l-.2.1a2 2 0 0 0-.7 2.7l.2.4a2 2 0 0 0 2.7.7l.2-.1a2 2 0 0 1 2 0l.4.2a2 2 0 0 1 1 1.7v.2a2 2 0 0 0 2 2h.4a2 2 0 0 0 2-2v-.2a2 2 0 0 1 1-1.7l.4-.2a2 2 0 0 1 2 0l.2.1a2 2 0 0 0 2.7-.7l.2-.4a2 2 0 0 0-.7-2.7l-.2-.1a2 2 0 0 1-1-1.7v-.5a2 2 0 0 1 1-1.7l.2-.1a2 2 0 0 0 .7-2.7l-.2-.4a2 2 0 0 0-2.7-.7l-.2.1a2 2 0 0 1-2 0l-.4-.2a2 2 0 0 1-1-1.7V4a2 2 0 0 0-2-2Z" /><circle cx="12" cy="12" r="3" /></svg>
+            </button>
+          </div>
+        </div>
+      </aside>
+
+      <section class="task-pane" aria-label="Selected list">
+        <header class="task-header">
+          <button class="icon-button mobile-list-button" id="mobile-list-button" type="button" aria-label="Back to shared lists">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 18 9 12l6-6" /></svg>
+          </button>
+          <div class="header-main">
+            <div class="crumb" id="list-owner-label">Shared list</div>
+            <div class="title-row">
+              <h2 id="active-list-title">Shared Lists</h2>
+              <span id="visibility-chip" class="visibility-chip">Loading</span>
+            </div>
+            <div class="avatar-row" id="header-avatars" aria-label="Members"></div>
+          </div>
+          <div class="header-actions">
+            <button class="icon-text-button header-copy-link-button" id="copy-list-link-button" type="button" aria-label="Copy list link" hidden>
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 13a5 5 0 0 0 7.1.2l2.7-2.7a5 5 0 0 0-7.1-7.1L11.2 5" /><path d="M14 11a5 5 0 0 0-7.1-.2l-2.7 2.7a5 5 0 0 0 7.1 7.1l1.5-1.5" /></svg>
+              <span class="copy-list-link-text">Link</span>
+            </button>
+            <button class="icon-text-button" id="share-button" type="button" aria-controls="details-panel" aria-expanded="false">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16 8a3 3 0 1 0-2.8-4M6 14a3 3 0 1 0-2.8-4M18 22a3 3 0 1 0-2.8-4M8.7 13.1l6.6 3.8M15.3 7.1 8.7 10.9" /></svg>
+              <span id="share-button-text">Share</span>
+              <span class="share-request-badge" id="share-request-badge" hidden>0</span>
+            </button>
+            <button class="icon-button danger-button" id="delete-list-button" type="button" aria-label="Delete list">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18M8 6V4h8v2M6 6l1 15h10l1-15M10 11v6M14 11v6" /></svg>
+            </button>
+          </div>
+        </header>
+
+        <section class="access-denied-panel" id="access-denied-panel" hidden>
+          <div class="access-denied-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><path d="M7 11V8a5 5 0 0 1 10 0v3" /><path d="M6 11h12v9H6z" /><path d="M12 15v2" /></svg>
+          </div>
+          <h3>You don't have access to this list.</h3>
+          <p>Request access or return to your lists.</p>
+          <div class="access-request-status" id="access-request-status" hidden></div>
+          <div class="access-denied-actions">
+            <button class="primary-button" id="request-access-button" type="button">Request access</button>
+            <button class="quiet-button" id="return-to-picker-button" type="button">Return to Shared Lists</button>
+          </div>
+        </section>
+
+        <form class="add-task-form" id="add-task-form">
+          <div class="add-input-wrap">
+            <button class="inline-plus-button" type="submit" aria-label="Add task">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>
+            </button>
+            <input id="task-input" type="text" autocomplete="off" placeholder="Add a task" aria-label="Add a task" aria-describedby="task-input-hint" />
+            <span id="task-input-hint" class="sr-only">Tasks can contain up to 4,000 characters, including multiple links.</span>
+          </div>
+          <label class="date-field" aria-label="New task due date">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3v4M17 3v4M4 9h16M6 5h12a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2Z" /></svg>
+            <input id="draft-due-date" type="date" />
+          </label>
+        </form>
+
+        <div class="task-list" id="task-list" aria-live="polite"></div>
+
+        <section class="completed-drawer" aria-label="Completed tasks">
+          <button class="completed-summary" id="completed-toggle" type="button" aria-expanded="false">
+            <span class="chevron">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6" /></svg>
+            </span>
+            <span id="completed-count">Completed 0</span>
+          </button>
+          <div class="completed-content" id="completed-content" hidden>
+            <div class="completed-toolbar">
+              <label class="select-all">
+                <input id="select-all-completed" type="checkbox" />
+                Select all
+              </label>
+              <div class="completed-actions">
+                <button id="delete-selected-button" class="quiet-button" type="button" disabled>
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18M8 6V4h8v2M6 6l1 15h10l1-15M10 11v6M14 11v6" /></svg>
+                  Delete selected
+                </button>
+                <button id="clear-completed-button" class="quiet-button danger-text" type="button">Clear completed</button>
+              </div>
+            </div>
+            <div id="completed-list" class="completed-list"></div>
+          </div>
+        </section>
+      </section>
+
+      <div class="details-sheet-scrim" id="details-sheet-scrim" hidden></div>
+      <aside class="details-panel" id="details-panel" aria-label="List details">
+        <div class="mobile-sheet-header">
+          <h2>Share</h2>
+          <button class="icon-button" id="details-sheet-close" type="button" aria-label="Close details">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12" /></svg>
+          </button>
+        </div>
+        <section class="detail-section sharing-section">
+          <div class="section-title-row">
+            <h3>Sharing</h3>
+            <span id="owner-only-label" class="owner-only-label"></span>
+          </div>
+          <p id="share-status" class="detail-copy">Select a list</p>
+          <div id="access-request-section" class="access-request-section" hidden>
+            <div class="access-request-heading">
+              <span>Access requests</span>
+              <span id="access-request-count" class="access-request-count">0</span>
+            </div>
+            <div id="access-request-list" class="access-request-list"></div>
+          </div>
+          <div id="member-list" class="member-list"></div>
+          <form id="invite-form" class="invite-form">
+            <div class="people-combobox">
+              <input
+                id="invite-input"
+                type="text"
+                placeholder="Name or alias"
+                aria-label="Invite by name or email"
+                aria-describedby="invite-status"
+                aria-autocomplete="list"
+                aria-controls="people-suggestions"
+                aria-expanded="false"
+                autocomplete="off"
+                role="combobox"
+              />
+            </div>
+            <button class="icon-button small primary" id="invite-submit-button" type="submit" aria-label="Add collaborator">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>
+            </button>
+            <p class="invite-status" id="invite-status" aria-live="polite" hidden></p>
+          </form>
+          <button id="allow-all-share-button" class="quiet-button share-all-button" type="button" hidden>Allow all to share</button>
+        </section>
+      </aside>
+    </main>
+
+    <div id="people-suggestions" class="people-suggestions" role="listbox" hidden></div>
+
+    <div class="modal-scrim" id="new-list-dialog" hidden>
+      <form class="list-title-dialog" id="new-list-form" role="dialog" aria-modal="true" aria-labelledby="new-list-dialog-title">
+        <label id="new-list-dialog-title" for="new-list-title-input">List title</label>
+        <div class="list-title-control">
+          <input id="new-list-title-input" type="text" autocomplete="off" maxlength="120" />
+          <button class="icon-button primary" type="submit" aria-label="Create list">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 4 4L19 6" /></svg>
+          </button>
+          <button class="icon-button" id="new-list-cancel" type="button" aria-label="Cancel">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12" /></svg>
+          </button>
+        </div>
+      </form>
+    </div>
+
+    <div class="modal-scrim settings-scrim" id="settings-dialog" hidden>
+      <section class="settings-dialog" role="dialog" aria-modal="true" aria-labelledby="settings-dialog-title">
+        <div class="dialog-title-row">
+          <h2 id="settings-dialog-title">Settings</h2>
+          <button class="icon-button" id="settings-close-button" type="button" aria-label="Close settings">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12" /></svg>
+          </button>
+        </div>
+        <section class="settings-section" aria-labelledby="theme-settings-title">
+          <div class="settings-section-title" id="theme-settings-title">Theme</div>
+          <div class="segmented-control theme-control" role="radiogroup" aria-labelledby="theme-settings-title">
+            <label class="segmented-option">
+              <input type="radio" name="theme-preference" value="system" />
+              <span>Match system</span>
+            </label>
+            <label class="segmented-option">
+              <input type="radio" name="theme-preference" value="light" />
+              <span>Light</span>
+            </label>
+            <label class="segmented-option">
+              <input type="radio" name="theme-preference" value="dark" />
+              <span>Dark</span>
+            </label>
+          </div>
+        </section>
+        <button class="settings-row" id="show-overview-demo-button" type="button">
+          <span class="settings-row-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><path d="M5 5h14v14H5z" /><path d="M9 9h6M9 13h4" /><path d="m15 16 3 3" /></svg>
+          </span>
+          <span>
+            <strong>Overview</strong>
+            <small>Replay the quick tour</small>
+          </span>
+          <svg class="settings-row-chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6" /></svg>
+        </button>
+        <button class="settings-row" id="show-home-screen-guide-button" type="button">
+          <span class="settings-row-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><path d="M8 6h9M8 12h9M8 18h9" /><path d="m4 6 .8.8L6.4 5.2M4 12h2M4 18h2" /></svg>
+          </span>
+          <span>
+            <strong>Install as app</strong>
+            <small id="install-app-settings-description">Show the app install guide</small>
+          </span>
+          <svg class="settings-row-chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6" /></svg>
+        </button>
+        <a class="settings-row settings-license-row" id="settings-license-link" href="/license.html" target="_blank" rel="noopener">
+          <span class="settings-row-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z" /><path d="M14 2v6h6" /><path d="M8 13h8M8 17h5" /></svg>
+          </span>
+          <span>
+            <strong>License</strong>
+            <small>Reusable starter: Apache-2.0</small>
+          </span>
+          <svg class="settings-row-chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6" /></svg>
+        </a>
+        <a class="settings-row settings-auth-row" id="settings-auth-action" href="/signin-with-chatgpt?return_to=/" data-auth-action="signin">
+          <span class="settings-row-icon" id="settings-auth-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4" /><path d="m10 17 5-5-5-5" /><path d="M15 12H3" /></svg>
+          </span>
+          <span>
+            <strong id="settings-auth-title">Sign in</strong>
+            <small id="settings-auth-description">Sign in with ChatGPT to view shared lists</small>
+          </span>
+          <svg class="settings-row-chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6" /></svg>
+        </a>
+      </section>
+    </div>
+
+    <div class="modal-scrim overview-demo-scrim" id="overview-demo" hidden>
+      <section class="overview-demo" role="dialog" aria-modal="true" aria-labelledby="overview-demo-title" aria-describedby="overview-step-copy">
+        <button class="icon-button guide-close-button" id="overview-demo-close" type="button" aria-label="Close overview">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12" /></svg>
+        </button>
+        <div class="overview-demo-heading">
+          <img class="home-screen-app-icon" src="/apple-touch-icon.png" alt="" />
+          <div>
+            <h2 id="overview-demo-title">Shared Lists overview</h2>
+            <p>A quick tour of the everyday moves.</p>
+          </div>
+        </div>
+        <div class="overview-demo-body">
+          <div class="overview-visual" aria-hidden="true">
+            <div class="overview-mini-app">
+              <div class="overview-mini-topbar">
+                <span class="overview-mini-icon"><img src="/apple-touch-icon.png" alt="" /></span>
+                <strong>Shared Lists</strong>
+                <span class="overview-mini-plus demo-create-plus">+</span>
+              </div>
+              <div class="overview-mini-main">
+                <div class="overview-mini-lists">
+                  <span class="overview-mini-label">Owned by me</span>
+                  <span class="overview-mini-list demo-create">Groceries</span>
+                  <span class="overview-mini-list muted">Packing</span>
+                </div>
+                <div class="overview-mini-tasks">
+                  <span class="overview-mini-list-title">Groceries</span>
+                  <span class="overview-mini-action demo-copy">Link</span>
+                  <span class="overview-mini-action demo-share">Share</span>
+                  <span class="overview-mini-input demo-task">Add apples</span>
+                  <span class="overview-mini-task">
+                    <span class="overview-check"></span>
+                    <span>Milk</span>
+                    <span class="overview-due demo-date">Today</span>
+                  </span>
+                  <span class="overview-mini-task demo-done">
+                    <span class="overview-check checked"></span>
+                    <span>Bagels</span>
+                  </span>
+                </div>
+              </div>
+              <div class="overview-mini-footer">
+                <span class="demo-theme">Theme</span>
+                <span class="demo-install">Install</span>
+              </div>
+            </div>
+          </div>
+          <div class="overview-step-panel">
+            <p class="overview-step-label" id="overview-step-label">Step 1 of 7</p>
+            <h3 id="overview-step-title">Create a list</h3>
+            <p id="overview-step-copy">Tap the blue plus, name the list, and it appears under Owned by me.</p>
+            <div class="overview-dots" id="overview-dots" aria-label="Overview steps"></div>
+            <div class="guide-actions">
+              <button class="quiet-button" id="overview-demo-back" type="button">Back</button>
+              <button class="primary-button" id="overview-demo-next" type="button">Next</button>
+              <button class="quiet-button" id="overview-demo-done" type="button">Done</button>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <div class="modal-scrim home-screen-guide-scrim" id="home-screen-guide" hidden>
+      <section class="home-screen-guide" role="dialog" aria-modal="true" aria-labelledby="home-screen-guide-title">
+        <button class="icon-button guide-close-button" id="home-screen-guide-close" type="button" aria-label="Close Add to Home Screen guide">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12" /></svg>
+        </button>
+        <img class="home-screen-app-icon" src="/apple-touch-icon.png" alt="" />
+        <h2 id="home-screen-guide-title">Install Shared Lists as an app</h2>
+        <ol class="home-screen-steps mobile-install-steps">
+          <li>
+            <div class="safari-bar-visual" aria-hidden="true">
+              <span class="safari-url-pill">shared-lists</span>
+              <span class="safari-share-target">
+                <span class="guide-bounce-arrow"></span>
+                <svg viewBox="0 0 24 24"><path d="M12 16V4" /><path d="m7 9 5-5 5 5" /><path d="M5 12v7h14v-7" /></svg>
+              </span>
+            </div>
+            <span>Tap the Share button in Safari.</span>
+          </li>
+          <li>
+            <div class="share-action-visual" aria-hidden="true">
+              <svg viewBox="0 0 24 24"><path d="m7 10 5 5 5-5" /></svg>
+              <span>View More</span>
+            </div>
+            <span>Open View More if you do not see the option.</span>
+          </li>
+          <li>
+            <div class="share-action-visual" aria-hidden="true">
+              <svg viewBox="0 0 24 24"><path d="M9 12h6M12 9v6" /><path d="M5 5h14v14H5z" /></svg>
+              <span>Add to Home Screen</span>
+            </div>
+            <span>Tap Add to Home Screen, then Add.</span>
+          </li>
+        </ol>
+        <ol class="home-screen-steps desktop-install-steps">
+          <li>
+            <div class="desktop-install-visual" aria-hidden="true">
+              <span class="desktop-toolbar-pill">Shared Lists</span>
+              <span class="desktop-install-target">
+                <span class="guide-bounce-arrow"></span>
+                <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14" /><path d="M5 5h14v14H5z" /></svg>
+              </span>
+            </div>
+            <span>Open Shared Lists in Chrome, Edge, or Safari.</span>
+          </li>
+          <li>
+            <div class="share-action-visual" aria-hidden="true">
+              <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14" /><path d="M5 5h14v14H5z" /></svg>
+              <span>Install App</span>
+            </div>
+            <span>Choose Install App from the address bar or browser menu.</span>
+          </li>
+          <li>
+            <div class="share-action-visual" aria-hidden="true">
+              <svg viewBox="0 0 24 24"><path d="m5 12 4 4L19 6" /></svg>
+              <span>Install</span>
+            </div>
+            <span>Confirm Install to open Shared Lists like a desktop app.</span>
+          </li>
+        </ol>
+        <div class="guide-actions">
+          <button class="primary-button" id="home-screen-guide-done" type="button">Done</button>
+          <button class="quiet-button" id="home-screen-guide-later" type="button">Later</button>
+        </div>
+      </section>
+    </div>
+
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+    <div id="marker-popover" class="marker-popover" role="dialog" aria-label="Customize list marker" hidden></div>
+    <div id="marker-coach" class="marker-coach" role="dialog" aria-label="Customize list icons" hidden></div>
+
+    <script type="module" src="/app.js"></script>
+  </body>
+</html>

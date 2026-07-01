@@ -1,0 +1,78 @@
+export const schemaStatements = [
+  `CREATE TABLE IF NOT EXISTS users (
+    email TEXT PRIMARY KEY NOT NULL,
+    display_name TEXT NOT NULL,
+    full_name TEXT,
+    slack_user_id TEXT,
+    slack_handle TEXT,
+    aliases_json TEXT NOT NULL DEFAULT '[]',
+    profile_source TEXT NOT NULL DEFAULT 'shared-lists',
+    profile_synced_at TEXT,
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+  )`,
+  `CREATE TABLE IF NOT EXISTS lists (
+    id TEXT PRIMARY KEY NOT NULL,
+    title TEXT NOT NULL,
+    owner_email TEXT NOT NULL,
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    revision INTEGER NOT NULL DEFAULT 0,
+    FOREIGN KEY (owner_email) REFERENCES users(email)
+  )`,
+  `CREATE TABLE IF NOT EXISTS list_members (
+    list_id TEXT NOT NULL,
+    email TEXT NOT NULL,
+    role TEXT NOT NULL DEFAULT 'editor',
+    can_share INTEGER NOT NULL DEFAULT 0,
+    marker_color TEXT NOT NULL DEFAULT 'blue',
+    marker_icon TEXT NOT NULL DEFAULT 'app',
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (list_id, email),
+    FOREIGN KEY (list_id) REFERENCES lists(id),
+    FOREIGN KEY (email) REFERENCES users(email)
+  )`,
+  `CREATE TABLE IF NOT EXISTS tasks (
+    id TEXT PRIMARY KEY NOT NULL,
+    list_id TEXT NOT NULL,
+    title TEXT NOT NULL,
+    due_date TEXT,
+    status TEXT NOT NULL DEFAULT 'open' CHECK (status IN ('open', 'completed')),
+    created_by_email TEXT NOT NULL,
+    completed_by_email TEXT,
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    completed_at TEXT,
+    deleted_at TEXT,
+    deleted_by_email TEXT,
+    delete_reason TEXT,
+    revision INTEGER NOT NULL DEFAULT 0,
+    FOREIGN KEY (list_id) REFERENCES lists(id),
+    FOREIGN KEY (created_by_email) REFERENCES users(email),
+    FOREIGN KEY (completed_by_email) REFERENCES users(email),
+    FOREIGN KEY (deleted_by_email) REFERENCES users(email)
+  )`,
+  `CREATE TABLE IF NOT EXISTS activity (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    list_id TEXT NOT NULL,
+    actor_email TEXT NOT NULL,
+    action TEXT NOT NULL,
+    metadata TEXT,
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (list_id) REFERENCES lists(id),
+    FOREIGN KEY (actor_email) REFERENCES users(email)
+  )`,
+  `CREATE TABLE IF NOT EXISTS list_access_requests (
+    list_id TEXT NOT NULL,
+    requester_email TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'approved', 'declined')),
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    resolved_at TEXT,
+    resolved_by_email TEXT,
+    PRIMARY KEY (list_id, requester_email),
+    FOREIGN KEY (list_id) REFERENCES lists(id),
+    FOREIGN KEY (requester_email) REFERENCES users(email),
+    FOREIGN KEY (resolved_by_email) REFERENCES users(email)
+  )`,
+];

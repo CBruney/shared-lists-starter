@@ -1,0 +1,25 @@
+name = "shared-lists"
+main = "dist/server/index.js"
+compatibility_date = "2026-06-30"
+migrations_dir = "drizzle"
+
+[assets]
+binding = "ASSETS"
+directory = "dist/client"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "shared-lists"
+database_id = ""
+
+[vars]
+SHARED_LISTS_AUTH_PROVIDER = "cloudflare-access"
+ENABLE_FIRST_OWNER_SETUP = "true"
+FIRST_OWNER_EMAILS = ""
+CLOUDFLARE_ACCESS_TEAM_DOMAIN = ""
+CLOUDFLARE_ACCESS_AUD = ""
+ENABLE_ACCESS_AUDIT = "false"
+ACCESS_AUDIT_ADMINS = ""
+ENABLE_PEOPLE_IMPORT = "false"
+QUICK_ACTION_INTEGRATION_ENABLED = "false"
+QUICK_ACTION_INTEGRATION_ORIGINS = ""

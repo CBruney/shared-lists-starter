@@ -1,0 +1,6 @@
+CREATE TABLE IF NOT EXISTS idempotency_keys (
+  scope TEXT PRIMARY KEY NOT NULL,
+  status INTEGER NOT NULL,
+  response_json TEXT NOT NULL,
+  created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);

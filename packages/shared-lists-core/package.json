@@ -1,0 +1,9 @@
+{
+  "name": "@shared-lists/core",
+  "version": "0.1.0",
+  "description": "Core list permissions and storage contracts for Shared Lists.",
+  "license": "Apache-2.0",
+  "private": true,
+  "type": "module"
+}
+

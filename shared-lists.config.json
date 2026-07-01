@@ -1,0 +1,14 @@
+{
+  "appName": "Shared Lists",
+  "publicUrl": "",
+  "feedbackEmail": "",
+  "authProvider": "openai-sites",
+  "features": {
+    "quickActionBridge": false,
+    "accessAudit": false,
+    "peopleImport": false
+  },
+  "quickActionBridge": {
+    "allowedOrigins": []
+  }
+}

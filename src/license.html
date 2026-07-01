@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Shared Lists License</title>
+    <meta name="theme-color" content="#ffffff" />
+    <style>
+      :root {
+        color-scheme: light dark;
+        --bg: #f8fafd;
+        --surface: #ffffff;
+        --text: #1f2937;
+        --muted: #667085;
+        --border: #d9e0ea;
+        --blue: #1a73e8;
+      }
+
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --bg: #111827;
+          --surface: #1f2937;
+          --text: #f8fafc;
+          --muted: #cbd5e1;
+          --border: #3f4a5f;
+          --blue: #7ab1ff;
+        }
+      }
+
+      body {
+        background: var(--bg);
+        color: var(--text);
+        font: 15px/1.5 ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        margin: 0;
+      }
+
+      main {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        margin: 32px auto;
+        max-width: 720px;
+        padding: 24px;
+        width: calc(100% - 32px);
+      }
+
+      h1 {
+        font-size: 24px;
+        line-height: 1.2;
+        margin: 0 0 12px;
+      }
+
+      p {
+        margin: 0 0 12px;
+      }
+
+      a {
+        color: var(--blue);
+        font-weight: 700;
+      }
+
+      code {
+        background: color-mix(in srgb, var(--border) 35%, transparent);
+        border-radius: 6px;
+        font: 0.93em ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+        padding: 2px 5px;
+      }
+
+      .license-topbar {
+        display: flex;
+        margin-bottom: 12px;
+      }
+
+      .back-link {
+        align-items: center;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        color: var(--text);
+        display: inline-flex;
+        height: 40px;
+        justify-content: center;
+        text-decoration: none;
+        width: 40px;
+      }
+
+      .back-link:hover,
+      .back-link:focus-visible {
+        border-color: var(--blue);
+        color: var(--blue);
+        outline: none;
+      }
+
+      .back-link svg {
+        height: 17px;
+        width: 17px;
+      }
+
+      .muted {
+        color: var(--muted);
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <div class="license-topbar"><a class="back-link" href="/" aria-label="Back to Shared Lists"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 18-6-6 6-6" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" /></svg></a></div>
+      <h1>Shared Lists License</h1>
+      <p>The personal Shared Lists app is private.</p>
+      <p>The reusable public starter maintained from this app is licensed under Apache License 2.0. Current starter version: <strong>v0.1.0</strong>.</p>
+      <p>The public starter is not published yet. Until then, the maintained starter lane lives in the private repo at <a href="https://github.com/public-maintainer/shared-lists/tree/main/oss/projects/shared-lists" rel="noopener">oss/projects/shared-lists</a>.</p>
+      <p><a href="https://www.apache.org/licenses/LICENSE-2.0" rel="noopener">Read the Apache-2.0 license</a></p>
+      <p class="muted">Run <code>npm run export:public -- --out .public-projects/shared-lists</code>. The generated directory is the clean copy to review and publish into a new public repo.</p>
+    </main>
+  </body>
+</html>

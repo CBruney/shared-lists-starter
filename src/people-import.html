@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Shared Lists People Import</title>
+    <style>
+      :root { color-scheme: light; font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+      * { box-sizing: border-box; }
+      body { background: #f8fafd; color: #1f2937; margin: 0; }
+      main { margin: 0 auto; max-width: 980px; padding: 32px 20px 64px; }
+      h1 { font-size: 26px; margin: 0 0 8px; }
+      p { color: #667085; margin: 0; }
+      section { background: #fff; border: 1px solid #d9e0ea; border-radius: 12px; margin-top: 20px; padding: 18px; }
+      h2 { font-size: 16px; margin: 0 0 12px; }
+      textarea { border: 1px solid #c7d0df; border-radius: 8px; font: 13px/1.45 ui-monospace, SFMono-Regular, Menlo, monospace; min-height: 220px; padding: 12px; resize: vertical; width: 100%; }
+      textarea:focus { border-color: #1a73e8; outline: 2px solid #e8f0fe; }
+      button { background: #1a73e8; border: 0; border-radius: 8px; color: #fff; font: inherit; font-weight: 700; margin-top: 10px; min-height: 42px; padding: 0 16px; }
+      button:disabled { cursor: default; opacity: .55; }
+      .status { color: #667085; margin-top: 10px; min-height: 20px; }
+      .status.error { color: #b3261e; }
+      .summary { align-items: center; display: flex; gap: 8px; justify-content: space-between; }
+      .count { background: #e8f0fe; border-radius: 999px; color: #174ea6; font-size: 12px; font-weight: 700; padding: 4px 9px; }
+      .table-wrap { overflow: auto; }
+      table { border-collapse: collapse; font-size: 13px; width: 100%; }
+      th, td { border-bottom: 1px solid #e5e7eb; padding: 9px 8px; text-align: left; vertical-align: top; }
+      th { color: #667085; font-size: 11px; letter-spacing: .06em; text-transform: uppercase; }
+      code { font-size: 12px; }
+      @media (max-width: 640px) { main { padding: 20px 14px 48px; } section { padding: 14px; } th:nth-child(3), td:nth-child(3) { display: none; } }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>People import</h1>
+      <p>Owner-only profile enrichment for Shared Lists autocomplete. Interaction scores remain local.</p>
+
+      <section aria-labelledby="import-heading">
+        <h2 id="import-heading">Import qualified profiles</h2>
+        <form id="people-import-form">
+          <label for="people-import-json">JSON payload</label>
+          <textarea id="people-import-json" spellcheck="false"></textarea>
+          <button id="people-import-submit" type="submit">Import people</button>
+        </form>
+        <div id="import-status" class="status" role="status" aria-live="polite"></div>
+      </section>
+
+      <section aria-labelledby="directory-heading">
+        <div class="summary">
+          <h2 id="directory-heading">Current directory</h2>
+          <span id="profile-count" class="count">Loading</span>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Name</th><th>Email</th><th>Slack</th><th>Source</th></tr></thead>
+            <tbody id="profile-rows"></tbody>
+          </table>
+        </div>
+        <div id="directory-status" class="status" role="status" aria-live="polite"></div>
+      </section>
+    </main>
+    <script>
+      const form = document.querySelector("#people-import-form");
+      const input = document.querySelector("#people-import-json");
+      const submit = document.querySelector("#people-import-submit");
+      const importStatus = document.querySelector("#import-status");
+      const directoryStatus = document.querySelector("#directory-status");
+      const profileCount = document.querySelector("#profile-count");
+      const profileRows = document.querySelector("#profile-rows");
+
+      form.addEventListener("submit", async (event) => {
+        event.preventDefault();
+        importStatus.classList.remove("error");
+        let payload;
+        try {
+          const parsed = JSON.parse(input.value || "{}");
+          payload = Array.isArray(parsed) ? { profiles: parsed } : parsed;
+          if (!Array.isArray(payload.profiles)) throw new Error("Payload must contain a profiles array");
+        } catch (error) {
+          importStatus.textContent = error.message;
+          importStatus.classList.add("error");
+          return;
+        }
+        submit.disabled = true;
+        importStatus.textContent = "Importing...";
+        try {
+          const response = await fetch("/api/admin/people/import", {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify(payload),
+          });
+          const result = await response.json();
+          if (!response.ok) throw new Error(result.error || "Import failed");
+          importStatus.textContent = `Imported ${result.imported_count}: ${result.created_count} new, ${result.updated_count} updated.`;
+          input.value = "";
+          await loadProfiles();
+        } catch (error) {
+          importStatus.textContent = error.message;
+          importStatus.classList.add("error");
+        } finally {
+          submit.disabled = false;
+        }
+      });
+
+      async function loadProfiles() {
+        directoryStatus.classList.remove("error");
+        directoryStatus.textContent = "";
+        try {
+          const response = await fetch("/api/admin/people");
+          const result = await response.json();
+          if (!response.ok) throw new Error(result.error || "Directory unavailable");
+          const profiles = result.profiles || [];
+          profileCount.textContent = `${profiles.length} people`;
+          profileRows.innerHTML = profiles.map((profile) => `
+            <tr>
+              <td>${escapeHtml(profile.full_name || profile.display_name || "Unresolved")}</td>
+              <td><code>${escapeHtml(profile.email)}</code></td>
+              <td>${escapeHtml(profile.slack_handle ? `@${profile.slack_handle}` : profile.slack_user_id || "—")}</td>
+              <td>${escapeHtml(profile.profile_source || "shared-lists")}</td>
+            </tr>
+          `).join("");
+        } catch (error) {
+          profileCount.textContent = "Unavailable";
+          directoryStatus.textContent = error.message;
+          directoryStatus.classList.add("error");
+        }
+      }
+
+      function escapeHtml(value) {
+        return String(value || "")
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;")
+          .replace(/"/g, "&quot;")
+          .replace(/'/g, "&#039;");
+      }
+
+      loadProfiles();
+    </script>
+  </body>
+</html>
