@@ -12,13 +12,13 @@ git diff --check
 
 ## Sanitization Checks
 
-Search for private markers. Replace the terms below with the private project IDs, domains, email domains, and database IDs used by the private source app:
+Search for private markers. Replace the terms below with any project IDs, domains, email domains, and database IDs used in your non-public deployment:
 
 ```bash
 rg -i "private-project-id|private-version-id|private-domain|private-email-domain|real-cloudflare-aud|real-database-id"
 ```
 
-The only acceptable matches should be in the private source repo, not in the generated public export.
+The only acceptable matches should be documentation examples that are clearly synthetic.
 
 ## Public Repo Setup
 
@@ -34,7 +34,7 @@ The only acceptable matches should be in the private source repo, not in the gen
 
 ## Release
 
-- Create an initial tag such as `v0.1.0`.
+- Create an immutable release tag such as `v0.1.1` for the next release. Do not retag, delete, or recreate `v0.1.0`.
 - Keep public commits free of private material.
 - Do not copy private deployment files into the starter.
 - Record whether each release changes runtime code, docs only, or repository settings.

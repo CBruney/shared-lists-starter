@@ -29,6 +29,8 @@ Included:
 Known limits:
 
 - No hosted public demo yet; use the local demo.
+- Do not retag, delete, or recreate `v0.1.0`; use `v0.1.1` or later for the next immutable release.
+- Keep an `Unreleased` section in `CHANGELOG.md` until the next tag is cut.
 - Cloudflare deploy/migrate/smoke/rollback commands are not implemented yet.
 - No automated production-system deploy smoke test yet.
 - No published package for the shared core yet.

@@ -1,5 +1,14 @@
 # Changelog
 
+## Unreleased
+
+- Make production auth provider configuration fail closed unless `SHARED_LISTS_AUTH_PROVIDER` is explicitly set to `openai-sites` or `cloudflare-access`.
+- Block cross-site state-changing API calls with Origin, Fetch Metadata, and JSON content-type checks.
+- Clear private browser cache and session state on sign-out or access loss.
+- Make first-owner setup require `FIRST_OWNER_EMAILS` unless `ALLOW_ANY_FIRST_OWNER=true` is explicitly configured.
+- Keep Google Contacts and Cloudflare deployment lanes documented as gated until their production readiness work is complete.
+- Update `esbuild` past `0.27.3`.
+
 ## 0.1.0
 
 - Initial public starter export.

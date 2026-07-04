@@ -4,6 +4,23 @@ Shared Lists can optionally let each signed-in user connect Google Contacts for 
 
 This is not required for the app to work. Users can always type a full email address into Share and add that person directly.
 
+## Current Status
+
+Keep Google Contacts disabled for real deployments.
+
+The OAuth and storage foundations are present, but the sync path is not production-ready. The current large-sync approach can exceed Cloudflare Worker D1 query limits when importing a large contact set, and the failure/recovery coverage is not complete enough for real users yet.
+
+Required gates before enabling:
+
+- Replace one-contact-at-a-time D1 writes with resumable staged writes that stay inside Worker and D1 limits.
+- Add tests for OAuth state ownership, replay prevention, expiry, PKCE, token exchange, token refresh, encryption failure, D1 disconnect, quota handling, callback recovery, and disconnect cleanup.
+- Add per-user sync cooldowns and retry behavior that does not make autocomplete slow.
+- Revoke the Google grant on disconnect where the provider supports it.
+- Send no-store and no-referrer headers on OAuth callback responses.
+- Validate token-secret strength before accepting encrypted refresh-token storage.
+- Document and test token key rotation.
+- Pass a real D1 large-sync rehearsal before changing the default from disabled.
+
 ## Privacy Boundary
 
 - Contacts are scoped by the signed-in user email.
@@ -23,9 +40,9 @@ The low-latency path is:
 
 Google is used during connect/sync, not during each keystroke.
 
-## Enable It
+## Future Enablement
 
-Turn on the client-visible setting:
+After the gates above are complete, a deployer can turn on the client-visible setting:
 
 ```json
 {
@@ -35,7 +52,7 @@ Turn on the client-visible setting:
 }
 ```
 
-Set server environment values in the host secret store:
+And set server environment values in the host secret store:
 
 ```text
 GOOGLE_CONTACTS_ENABLED=true

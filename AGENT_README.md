@@ -44,6 +44,7 @@ Edit these files for ordinary setup:
 
 Do not edit `src/app.js`, `src/worker.js`, or the store layer just to change the first owner, host, feedback email, or auth provider.
 Do not enable optional features such as access audit, people import, quick-action intake, or private Google Contacts autocomplete unless the user asks for them.
+Keep private Google Contacts disabled for real deployments until `docs/PRIVATE_CONTACTS.md` shows the large-sync, OAuth, quota, encryption, disconnect, and recovery gates are complete.
 
 ## Pick One Deployment Lane
 
@@ -94,6 +95,8 @@ curl -X POST "$APP_URL/api/setup/first-owner" \
 ```
 
 This request must be authenticated by the host. Do not spoof production identity headers.
+
+Production setup fails closed unless `FIRST_OWNER_EMAILS` is nonempty. Set `ALLOW_ANY_FIRST_OWNER=true` only for an intentional local demo or disposable test deployment.
 
 ## Safety Checks
 

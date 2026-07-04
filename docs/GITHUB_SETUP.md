@@ -44,6 +44,10 @@ Enable private vulnerability reporting in GitHub repository settings. `SECURITY.
 
 Enable GitHub Discussions for open-ended setup questions and community notes. Keep bug reports in Issues and confidential security reports in private vulnerability reporting.
 
+## Confidential Conduct Route
+
+Before accepting outside contributors, configure a confidential conduct-reporting route. A private maintainer email alias is preferable. If that is not available yet, keep `CODE_OF_CONDUCT.md` pointing to GitHub private vulnerability reporting as the temporary confidential route.
+
 ## First Release
 
 Keep the `v0.1.0` release notes aligned with `CHANGELOG.md`, `docs/RELEASES.md`, and the current starter docs.

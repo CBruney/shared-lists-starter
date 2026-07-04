@@ -4,16 +4,19 @@ import { routeApiRequest } from "../src/lib/api-router.mjs";
 import { MemoryStore } from "../src/lib/shared-lists-core.mjs";
 
 async function call(store, path, { method = "GET", body, user = "admin@local.test", headers = {}, routeOptions = {} } = {}) {
+  const upperMethod = method.toUpperCase();
+  const stateChanging = !["GET", "HEAD", "OPTIONS"].includes(upperMethod);
   const response = await routeApiRequest(new Request(`http://local.test${path}`, {
     method,
     headers: {
-      ...(body ? { "content-type": "application/json" } : {}),
+      ...(body !== undefined || stateChanging ? { "content-type": "application/json" } : {}),
       ...headers,
     },
-    body: body ? JSON.stringify(body) : undefined,
+    body: body !== undefined ? JSON.stringify(body) : undefined,
   }), {
     store,
     currentUserEmail: user,
+    allowAnyFirstOwner: true,
     ...routeOptions,
   });
   const payload = await response.json();
@@ -21,16 +24,19 @@ async function call(store, path, { method = "GET", body, user = "admin@local.tes
 }
 
 async function rawCall(store, path, { method = "GET", body, user = "admin@local.test", headers = {}, routeOptions = {} } = {}) {
+  const upperMethod = method.toUpperCase();
+  const stateChanging = !["GET", "HEAD", "OPTIONS"].includes(upperMethod);
   return routeApiRequest(new Request(`http://local.test${path}`, {
     method,
     headers: {
-      ...(body ? { "content-type": "application/json" } : {}),
+      ...(body !== undefined || stateChanging ? { "content-type": "application/json" } : {}),
       ...headers,
     },
-    body: body ? JSON.stringify(body) : undefined,
+    body: body !== undefined ? JSON.stringify(body) : undefined,
   }), {
     store,
     currentUserEmail: user,
+    allowAnyFirstOwner: true,
     ...routeOptions,
   });
 }
@@ -137,10 +143,69 @@ test("Quick action integration is disabled unless configured", async () => {
   assert.equal(response.status, 404);
 });
 
+test("state-changing routes reject cross-site origins and fetch metadata", async () => {
+  const store = new MemoryStore();
+  const originDenied = await call(store, "/api/lists", {
+    method: "POST",
+    headers: { origin: "https://evil.example" },
+    routeOptions: { allowAnyFirstOwner: true },
+    body: { title: "Cross-site list" },
+  });
+  assert.equal(originDenied.status, 403);
+
+  const fetchMetadataDenied = await call(store, "/api/lists", {
+    method: "POST",
+    headers: { "sec-fetch-site": "cross-site" },
+    routeOptions: { allowAnyFirstOwner: true },
+    body: { title: "Cross-site metadata list" },
+  });
+  assert.equal(fetchMetadataDenied.status, 403);
+
+  const lists = await call(store, "/api/lists");
+  assert.equal(lists.payload.owned.length, 0);
+});
+
+test("state-changing routes require application/json bodies", async () => {
+  const store = new MemoryStore();
+  const postResponse = await routeApiRequest(new Request("http://local.test/api/lists", {
+    method: "POST",
+    headers: {
+      "content-type": "text/plain",
+    },
+    body: JSON.stringify({ title: "Plain text list" }),
+  }), {
+    store,
+    currentUserEmail: "admin@local.test",
+    allowAnyFirstOwner: true,
+  });
+  const postPayload = await postResponse.json();
+
+  assert.equal(postResponse.status, 415);
+  assert.match(postPayload.error, /application\/json/);
+
+  const deleteResponse = await routeApiRequest(new Request("http://local.test/api/lists/list-1", {
+    method: "DELETE",
+    headers: {
+      "content-type": "text/plain",
+    },
+  }), {
+    store,
+    currentUserEmail: "admin@local.test",
+    allowAnyFirstOwner: true,
+  });
+  const deletePayload = await deleteResponse.json();
+
+  assert.equal(deleteResponse.status, 415);
+  assert.match(deletePayload.error, /application\/json/);
+  const lists = await call(store, "/api/lists");
+  assert.equal(lists.payload.owned.length, 0);
+});
+
 test("first owner setup can claim an empty deployment once", async () => {
   const store = new MemoryStore({ users: ["first-owner@local.test", "other-user@local.test"] });
   const firstOwnerOptions = {
     firstOwnerEmails: new Set(["first-owner@local.test"]),
+    allowAnyFirstOwner: false,
   };
 
   const blocked = await call(store, "/api/setup/first-owner", {
@@ -178,6 +243,33 @@ test("first owner setup can claim an empty deployment once", async () => {
     body: { title: "Second" },
   });
   assert.equal(second.status, 409);
+});
+
+test("first owner setup fails closed when no owner list or explicit opt-in is configured", async () => {
+  const store = new MemoryStore();
+
+  const status = await call(store, "/api/setup/status", {
+    routeOptions: { allowAnyFirstOwner: false },
+  });
+  assert.equal(status.status, 200);
+  assert.equal(status.payload.ready, false);
+  assert.equal(status.payload.configured, false);
+  assert.equal(status.payload.can_claim, false);
+
+  const blocked = await call(store, "/api/setup/first-owner", {
+    method: "POST",
+    routeOptions: { allowAnyFirstOwner: false },
+    body: { title: "Blocked first list" },
+  });
+  assert.equal(blocked.status, 503);
+  assert.match(blocked.payload.error, /FIRST_OWNER_EMAILS/);
+
+  const allowed = await call(store, "/api/setup/first-owner", {
+    method: "POST",
+    routeOptions: { allowAnyFirstOwner: true },
+    body: { title: "Explicitly open setup" },
+  });
+  assert.equal(allowed.status, 201);
 });
 
 test("session returns identity, bootstrap persists users, and people search stays minimal", async () => {

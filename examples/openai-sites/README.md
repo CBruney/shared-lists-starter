@@ -21,6 +21,7 @@ Required server values:
 ```text
 SHARED_LISTS_AUTH_PROVIDER=openai-sites
 FIRST_OWNER_EMAILS=
+ALLOW_ANY_FIRST_OWNER=false
 ENABLE_FIRST_OWNER_SETUP=true
 ```
 

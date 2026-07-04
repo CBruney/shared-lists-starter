@@ -5,6 +5,7 @@ import { cp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { promisify } from "node:util";
 import { fileURLToPath } from "node:url";
+import { applyDocumentMetadata, injectSharedListsConfig, renderManifest } from "./render-client-config.mjs";
 
 const root = dirname(fileURLToPath(new URL("../package.json", import.meta.url)));
 const dist = join(root, "dist");
@@ -53,7 +54,7 @@ const builtIndex = markGenericDocument(
 await writeFile(join(dist, "client", "index.html"), builtIndex);
 await writeFile(join(dist, "client", "shell.html"), builtIndex);
 const manifest = await readFile(join(dist, "client", "manifest.webmanifest"), "utf8");
-await writeFile(join(dist, "client", "manifest.webmanifest"), renderManifest(manifest, installIconDataUri, sharedListsConfig));
+await writeFile(join(dist, "client", "manifest.webmanifest"), renderManifest(manifest, sharedListsConfig, { installIconDataUri }));
 const serviceWorker = await readFile(join(dist, "client", "service-worker.js"), "utf8");
 await writeFile(join(dist, "client", "service-worker.js"), versionServiceWorker(serviceWorker, assetVersion));
 
@@ -90,64 +91,10 @@ async function readSharedListsConfig() {
   }
 }
 
-function injectSharedListsConfig(html, config) {
-  return html.replace("__SHARED_LISTS_CONFIG__", escapeScriptJson(JSON.stringify(config)));
-}
-
-function escapeScriptJson(value) {
-  return value.replace(/</g, "\\u003c");
-}
-
-function applyDocumentMetadata(html, config) {
-  const publicUrl = String(config.publicUrl || "").trim().replace(/\/+$/, "");
-  const appName = normalizeAppName(config.appName);
-  const rootUrl = publicUrl || "/";
-  const socialPreviewUrl = publicUrl ? `${publicUrl}/social-preview.png` : "/social-preview.png";
-  return html
-    .replace(/<title>[^<]*<\/title>/, `<title>${escapeHtml(appName)}</title>`)
-    .replace(/<main class="app-shell" aria-label="[^"]*"/, `<main class="app-shell" aria-label="${escapeAttr(appName)}"`)
-    .replace(/<h1>Shared Lists<\/h1>/, `<h1>${escapeHtml(appName)}</h1>`)
-    .replace(/<meta name="apple-mobile-web-app-title" content="[^"]*"/, `<meta name="apple-mobile-web-app-title" content="${escapeAttr(appName)}"`)
-    .replace(/<meta property="og:site_name" content="[^"]*"/, `<meta property="og:site_name" content="${escapeAttr(appName)}"`)
-    .replace(/<meta property="og:title" content="[^"]*"/, `<meta property="og:title" content="${escapeAttr(appName)}"`)
-    .replace(/<meta property="og:url" content="[^"]*"/, `<meta property="og:url" content="${escapeAttr(rootUrl)}"`)
-    .replace(/<meta property="og:image" content="[^"]*"/, `<meta property="og:image" content="${escapeAttr(socialPreviewUrl)}"`)
-    .replace(/<meta property="og:image:secure_url" content="[^"]*"/, `<meta property="og:image:secure_url" content="${escapeAttr(socialPreviewUrl)}"`)
-    .replace(/<meta property="og:image:alt" content="[^"]*"/, `<meta property="og:image:alt" content="${escapeAttr(`${appName}. Share and collaborate.`)}"`)
-    .replace(/<meta name="twitter:title" content="[^"]*"/, `<meta name="twitter:title" content="${escapeAttr(appName)}"`)
-    .replace(/<meta name="twitter:image" content="[^"]*"/, `<meta name="twitter:image" content="${escapeAttr(socialPreviewUrl)}"`);
-}
-
 function versionClientAssets(html, version) {
   return html
     .replace(/href="\/styles\.css(?:\?v=[^"]*)?"/, `href="/styles.css?v=${version}"`)
     .replace(/src="\/app\.js(?:\?v=[^"]*)?"/, `src="/app.js?v=${version}"`);
-}
-
-function renderManifest(manifest, dataUri, config) {
-  const parsed = JSON.parse(manifest);
-  parsed.name = normalizeAppName(config.appName);
-  parsed.short_name = parsed.name.length > 12 ? "Shared Lists" : parsed.name;
-  parsed.description = String(config.manifestDescription || parsed.description || "Private shared lists with list-level permissions.").trim();
-  parsed.icons = parsed.icons.map((icon) =>
-    icon.src === "/apple-touch-icon.png" ? { ...icon, src: dataUri } : icon,
-  );
-  return `${JSON.stringify(parsed, null, 2)}\n`;
-}
-
-function normalizeAppName(value) {
-  return String(value || "Shared Lists").trim().slice(0, 80) || "Shared Lists";
-}
-
-function escapeHtml(value) {
-  return String(value || "")
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;");
-}
-
-function escapeAttr(value) {
-  return escapeHtml(value).replace(/"/g, "&quot;");
 }
 
 function stripDevUserOptions(html) {

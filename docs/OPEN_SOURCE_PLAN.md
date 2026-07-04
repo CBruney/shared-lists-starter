@@ -21,7 +21,7 @@ Goal: make the repo usable without an agent.
 
 Included:
 
-- `npm install`
+- `npm ci`
 - `npm run dev`
 - `npm test`
 - `npm run build`

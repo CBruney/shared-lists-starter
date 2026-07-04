@@ -5,7 +5,14 @@ export const CLOUDFLARE_ACCESS_AUTH_COOKIE = "CF_Authorization";
 
 const LOCAL_HOSTS = new Set(["localhost", "127.0.0.1", "::1"]);
 const DEFAULT_LOCAL_USER_EMAIL = "local-user@local.test";
-const DEFAULT_AUTH_PROVIDER = "openai-sites";
+const AUTH_PROVIDERS = new Set(["openai-sites", "cloudflare-access"]);
+
+export class AuthProviderConfigurationError extends Error {
+  constructor(message) {
+    super(message);
+    this.name = "AuthProviderConfigurationError";
+  }
+}
 
 export function currentUserEmailFromRequest(request, { defaultLocalUserEmail = DEFAULT_LOCAL_USER_EMAIL } = {}) {
   const authenticated = openAiSitesEmailFromRequest(request);
@@ -30,7 +37,7 @@ function localDevEmailFromRequest(request, { defaultLocalUserEmail = DEFAULT_LOC
 export async function resolveCurrentUserEmailFromRequest(
   request,
   {
-    authProvider = DEFAULT_AUTH_PROVIDER,
+    authProvider,
     defaultLocalUserEmail = DEFAULT_LOCAL_USER_EMAIL,
     cloudflareAccess = {},
   } = {},
@@ -38,7 +45,8 @@ export async function resolveCurrentUserEmailFromRequest(
   const localDevEmail = localDevEmailFromRequest(request, { defaultLocalUserEmail });
   if (localDevEmail) return localDevEmail;
 
-  if (normalizeAuthProvider(authProvider) === "cloudflare-access") {
+  const provider = normalizeAuthProvider(authProvider);
+  if (provider === "cloudflare-access") {
     return cloudflareAccessEmailFromRequest(request, cloudflareAccess);
   }
 
@@ -86,9 +94,12 @@ export async function cloudflareAccessEmailFromRequest(
   return verified ? String(payload.email || payload.common_name || "").trim().toLowerCase() : "";
 }
 
-function normalizeAuthProvider(value) {
-  const provider = String(value || DEFAULT_AUTH_PROVIDER).trim().toLowerCase();
-  return provider === "cloudflare-access" ? provider : DEFAULT_AUTH_PROVIDER;
+export function normalizeAuthProvider(value) {
+  const provider = String(value || "").trim().toLowerCase();
+  if (AUTH_PROVIDERS.has(provider)) return provider;
+  throw new AuthProviderConfigurationError(
+    "SHARED_LISTS_AUTH_PROVIDER must be set to openai-sites or cloudflare-access",
+  );
 }
 
 function normalizeEmailHeader(value) {

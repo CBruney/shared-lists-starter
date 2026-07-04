@@ -4,6 +4,7 @@ import {
   CLOUDFLARE_ACCESS_JWT_HEADER,
   currentUserEmailFromRequest,
   DEV_USER_EMAIL_HEADER,
+  normalizeAuthProvider,
   OAI_AUTHENTICATED_USER_EMAIL_HEADER,
   resolveCurrentUserEmailFromRequest,
 } from "../src/lib/request-identity.mjs";
@@ -117,6 +118,30 @@ test("OpenAI Sites mode rejects Cloudflare-only credentials", async () => {
   });
 
   assert.equal(email, "");
+});
+
+test("auth provider configuration only accepts known providers", () => {
+  assert.equal(normalizeAuthProvider("openai-sites"), "openai-sites");
+  assert.equal(normalizeAuthProvider("cloudflare-access"), "cloudflare-access");
+  assert.throws(() => normalizeAuthProvider("cloudflare_access"), /SHARED_LISTS_AUTH_PROVIDER/);
+  assert.throws(() => normalizeAuthProvider(""), /SHARED_LISTS_AUTH_PROVIDER/);
+});
+
+test("production identity resolution fails closed when auth provider is missing or invalid", async () => {
+  const request = new Request("https://shared-lists.invalid/api/session", {
+    headers: {
+      [OAI_AUTHENTICATED_USER_EMAIL_HEADER]: "owner@local.test",
+    },
+  });
+
+  await assert.rejects(
+    () => resolveCurrentUserEmailFromRequest(request, {}),
+    /SHARED_LISTS_AUTH_PROVIDER/,
+  );
+  await assert.rejects(
+    () => resolveCurrentUserEmailFromRequest(request, { authProvider: "cloudflare_access" }),
+    /SHARED_LISTS_AUTH_PROVIDER/,
+  );
 });
 
 async function signJwt(header, payload, privateKey) {

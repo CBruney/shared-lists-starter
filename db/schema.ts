@@ -46,6 +46,7 @@ export const schemaStatements = [
     deleted_at TEXT,
     deleted_by_email TEXT,
     delete_reason TEXT,
+    sort_order INTEGER NOT NULL DEFAULT 0,
     revision INTEGER NOT NULL DEFAULT 0,
     FOREIGN KEY (list_id) REFERENCES lists(id),
     FOREIGN KEY (created_by_email) REFERENCES users(email),
@@ -74,6 +75,24 @@ export const schemaStatements = [
     FOREIGN KEY (list_id) REFERENCES lists(id),
     FOREIGN KEY (requester_email) REFERENCES users(email),
     FOREIGN KEY (resolved_by_email) REFERENCES users(email)
+  )`,
+  `CREATE TABLE IF NOT EXISTS idempotency_keys (
+    scope TEXT PRIMARY KEY NOT NULL,
+    status INTEGER NOT NULL,
+    response_json TEXT NOT NULL,
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+  )`,
+  `CREATE TABLE IF NOT EXISTS task_external_refs (
+    owner_email TEXT NOT NULL,
+    source TEXT NOT NULL,
+    external_id TEXT NOT NULL,
+    task_id TEXT NOT NULL,
+    list_id TEXT NOT NULL,
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (owner_email, source, external_id),
+    FOREIGN KEY (owner_email) REFERENCES users(email),
+    FOREIGN KEY (task_id) REFERENCES tasks(id),
+    FOREIGN KEY (list_id) REFERENCES lists(id)
   )`,
   `CREATE TABLE IF NOT EXISTS user_contact_sources (
     owner_email TEXT NOT NULL,
@@ -111,4 +130,32 @@ export const schemaStatements = [
     created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (owner_email) REFERENCES users(email)
   )`,
+  `CREATE INDEX IF NOT EXISTS idx_lists_owner_email ON lists(owner_email)`,
+  `CREATE INDEX IF NOT EXISTS idx_list_members_email ON list_members(email)`,
+  `CREATE INDEX IF NOT EXISTS idx_list_members_email_list ON list_members(email, list_id)`,
+  `CREATE INDEX IF NOT EXISTS idx_tasks_list_status ON tasks(list_id, status)`,
+  `CREATE INDEX IF NOT EXISTS idx_tasks_due_date ON tasks(due_date)`,
+  `CREATE INDEX IF NOT EXISTS idx_tasks_list_status_deleted ON tasks(list_id, status, deleted_at)`,
+  `CREATE INDEX IF NOT EXISTS idx_tasks_open_list_due_created
+    ON tasks(list_id, due_date, created_at)
+    WHERE status = 'open' AND deleted_at IS NULL`,
+  `CREATE INDEX IF NOT EXISTS idx_tasks_completed_list_completed
+    ON tasks(list_id, completed_at DESC, updated_at DESC)
+    WHERE status = 'completed' AND deleted_at IS NULL`,
+  `CREATE INDEX IF NOT EXISTS idx_tasks_open_list_sort_order
+    ON tasks(list_id, sort_order, created_at)
+    WHERE status = 'open' AND deleted_at IS NULL`,
+  `CREATE INDEX IF NOT EXISTS idx_activity_list_created ON activity(list_id, created_at)`,
+  `CREATE INDEX IF NOT EXISTS idx_activity_list_created_id ON activity(list_id, created_at DESC, id DESC)`,
+  `CREATE INDEX IF NOT EXISTS idx_idempotency_keys_created_at ON idempotency_keys(created_at)`,
+  `CREATE INDEX IF NOT EXISTS idx_list_access_requests_list_status
+    ON list_access_requests(list_id, status, created_at)`,
+  `CREATE INDEX IF NOT EXISTS idx_list_access_requests_requester_status
+    ON list_access_requests(requester_email, status)`,
+  `CREATE INDEX IF NOT EXISTS idx_task_external_refs_task ON task_external_refs(task_id)`,
+  `CREATE INDEX IF NOT EXISTS idx_task_external_refs_list ON task_external_refs(list_id)`,
+  `CREATE INDEX IF NOT EXISTS idx_user_contacts_owner_provider_name
+    ON user_contacts(owner_email, provider, display_name)`,
+  `CREATE INDEX IF NOT EXISTS idx_contact_oauth_states_expires
+    ON contact_oauth_states(expires_at)`,
 ];
