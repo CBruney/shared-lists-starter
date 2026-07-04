@@ -126,6 +126,36 @@ test("Quick action integration only allows configured browser origins", async ()
     },
   });
   assert.equal(denied.status, 403);
+
+  const noOriginDenied = await call(store, "/api/integrations/quick-actions", {
+    method: "POST",
+    routeOptions: quickActionOptions,
+    body: {
+      source: "quick-actions",
+      external_id: "quick-action-no-origin",
+      title: "Should require an allowed origin",
+    },
+  });
+  assert.equal(noOriginDenied.status, 403);
+});
+
+test("Quick action integration fails closed without an explicit origin allowlist", async () => {
+  const store = new MemoryStore();
+  const response = await call(store, "/api/integrations/quick-actions", {
+    method: "POST",
+    headers: { origin: "https://quick-actions.invalid" },
+    routeOptions: {
+      quickActionIntegrationEnabled: true,
+      quickActionIntegrationOrigins: "",
+    },
+    body: {
+      source: "quick-actions",
+      external_id: "quick-action-no-allowlist",
+      title: "Should not publish",
+    },
+  });
+
+  assert.equal(response.status, 403);
 });
 
 test("Quick action integration is disabled unless configured", async () => {

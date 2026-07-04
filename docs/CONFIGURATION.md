@@ -77,7 +77,7 @@ The configured provider is exclusive in production. OpenAI Sites headers are not
 
 - `ENABLE_ACCESS_AUDIT`: exposes the admin access-audit endpoint when set to `true`.
 - `ENABLE_PEOPLE_IMPORT`: exposes the admin people-import page and API when set to `true`.
-- `QUICK_ACTION_INTEGRATION_ENABLED`: exposes the generic quick-action integration when set to `true`.
+- `QUICK_ACTION_INTEGRATION_ENABLED`: exposes the generic quick-action integration when set to `true`. `QUICK_ACTION_INTEGRATION_ORIGINS` must also contain an explicit comma-separated browser origin allowlist. An empty allowlist fails closed.
 - `GOOGLE_CONTACTS_ENABLED`: exposes optional per-user Google Contacts autocomplete when set to `true` and when `features.privateGoogleContacts` is also `true`. Keep this disabled until the readiness gates in `PRIVATE_CONTACTS.md` are complete.
 
 Keep optional features off until you know you need them.

@@ -82,7 +82,7 @@ Edit `shared-lists.config.json` for user-visible and client-side settings:
 }
 ```
 
-Use host environment variables for server-side settings. For local development, copy `.env.example` to `.env`; the dev server loads `.env` automatically. Do not commit real secrets or private deployment IDs. Optional admin and integration surfaces, including access audit, people import, quick-action intake, and private Google Contacts autocomplete, are disabled by config and readiness gates until you intentionally turn them on.
+Use host environment variables for server-side settings. For local development, copy `.env.example` to `.env`; the dev server loads `.env` automatically. Do not commit real secrets or private deployment IDs. Optional admin and integration surfaces, including access audit, people import, quick-action intake, and private Google Contacts autocomplete, are disabled by config and readiness gates until you intentionally turn them on. Quick-action intake also requires an explicit origin allowlist when enabled.
 
 Set `publicUrl` and `feedbackEmail` only when you have real values. If `feedbackEmail` is empty, the app hides Feedback and Help/questions.
 

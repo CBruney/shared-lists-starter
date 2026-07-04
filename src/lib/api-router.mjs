@@ -717,17 +717,15 @@ function trimTrailingSlash(path) {
   return path;
 }
 
-const DEFAULT_QUICK_ACTION_INTEGRATION_ORIGINS = [
-];
-
 function isQuickActionIntegrationPath(path) {
   return path === "/api/integrations/quick-actions";
 }
 
 function quickActionIntegrationCorsHeaders(request, configuredOrigins) {
-  const origin = request.headers.get("origin") || "";
-  if (!origin) return new Headers({ "cache-control": "no-store" });
   const allowed = parseQuickActionIntegrationOrigins(configuredOrigins);
+  if (allowed.size === 0) return null;
+  const origin = request.headers.get("origin") || "";
+  if (!origin) return null;
   if (!allowed.has(origin)) return null;
   return new Headers({
     "access-control-allow-origin": origin,
@@ -745,7 +743,7 @@ function parseQuickActionIntegrationOrigins(value) {
     .split(",")
     .map((origin) => origin.trim())
     .filter(Boolean);
-  return new Set(configured.length ? configured : DEFAULT_QUICK_ACTION_INTEGRATION_ORIGINS);
+  return new Set(configured);
 }
 
 function firstOwnerSetupStatus(userEmail, { hasLists, firstOwnerEmails, firstOwnerSetupEnabled, allowAnyFirstOwner = false }) {

@@ -7,6 +7,7 @@
 - Clear private browser cache and session state on sign-out or access loss.
 - Make first-owner setup require `FIRST_OWNER_EMAILS` unless `ALLOW_ANY_FIRST_OWNER=true` is explicitly configured.
 - Keep Google Contacts and Cloudflare deployment lanes documented as gated until their production readiness work is complete.
+- Make Quick Actions fail closed unless explicitly enabled with a nonempty origin allowlist.
 - Update `esbuild` past `0.27.3`.
 
 ## 0.1.0
