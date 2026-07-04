@@ -22,6 +22,7 @@ Shared Lists Starter is pre-1.0. The goal is to stay small, useful, and easy to 
 - Add a complete Cloudflare smoke test with a disposable D1 database.
 - Test the production system, not just its components.
 - Add browser and accessibility automation for keyboard, focus, and combobox behavior.
+- Add a dedicated confidential conduct-reporting route before accepting outside contributors.
 - Split the ACL, schema, and store layer into a published package.
 - Add starter templates for grocery, packing, chores, and trip lists.
 - Add import/export helpers for text and CSV.
