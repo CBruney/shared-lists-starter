@@ -15,7 +15,7 @@ Shared Lists Starter should be a practical place for people to learn, fork, and 
 
 For ordinary moderation concerns, open a GitHub issue or discussion and keep the report factual.
 
-For a conduct report that includes private personal information, use GitHub private vulnerability reporting and prefix the title with `Conduct report`:
+For a conduct report that includes private personal information, use the dedicated confidential conduct-reporting route when the maintainer has configured one. Until then, use GitHub private vulnerability reporting and prefix the title with `Conduct report`:
 
 ```text
 https://github.com/CBruney/shared-lists-starter/security/advisories/new

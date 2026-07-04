@@ -5,6 +5,7 @@ import { fileURLToPath } from "node:url";
 import { MemoryStore } from "../src/lib/shared-lists-core.mjs";
 import { routeApiRequest } from "../src/lib/api-router.mjs";
 import { googleContactsConfig } from "../src/lib/google-contacts.mjs";
+import { applyDocumentMetadata, injectSharedListsConfig, renderManifest } from "./render-client-config.mjs";
 
 const root = fileURLToPath(new URL("..", import.meta.url));
 const clientRoot = join(root, "src");
@@ -28,6 +29,9 @@ const server = createServer(async (req, res) => {
       const response = await routeApiRequest(request, {
         store,
         currentUserEmail: req.headers["x-dev-user-email"] || defaultDevUserEmail,
+        firstOwnerEmails: emailSet(process.env.FIRST_OWNER_EMAILS),
+        firstOwnerSetupEnabled: process.env.ENABLE_FIRST_OWNER_SETUP !== "false",
+        allowAnyFirstOwner: process.env.ALLOW_ANY_FIRST_OWNER === "true",
         privateContactsConfig: {
           google: googleContactsConfig(process.env),
         },
@@ -73,9 +77,7 @@ async function serveStatic(url, res) {
     const fileStat = await stat(candidate);
     if (!fileStat.isFile()) throw new Error("Not a file");
     const rawContent = await readFile(candidate);
-    const content = pathname === "/index.html"
-      ? Buffer.from(injectSharedListsConfig(rawContent.toString("utf8")))
-      : rawContent;
+    const content = renderStaticContent(pathname, rawContent);
     res.writeHead(200, {
       "content-type": contentType(candidate),
       "cache-control": "no-store",
@@ -96,9 +98,18 @@ function readBody(req) {
   });
 }
 
+function emailSet(value) {
+  return new Set(
+    String(value || "")
+      .split(",")
+      .map((email) => email.trim().toLowerCase())
+      .filter(Boolean),
+  );
+}
+
 async function readSharedListsConfig() {
   try {
-    return JSON.parse(await readFile(join(root, "shared-lists.config.json"), "utf8"));
+    return JSON.parse(await readFile(process.env.SHARED_LISTS_CONFIG_PATH || join(root, "shared-lists.config.json"), "utf8"));
   } catch {
     return {};
   }
@@ -128,8 +139,14 @@ function unquoteEnvValue(value) {
   return value.replace(/\s+#.*$/, "").trim();
 }
 
-function injectSharedListsConfig(html) {
-  return html.replace("__SHARED_LISTS_CONFIG__", JSON.stringify(devConfig).replace(/</g, "\\u003c"));
+function renderStaticContent(pathname, rawContent) {
+  if (pathname === "/index.html") {
+    return Buffer.from(applyDocumentMetadata(injectSharedListsConfig(rawContent.toString("utf8"), devConfig), devConfig));
+  }
+  if (pathname === "/manifest.webmanifest") {
+    return Buffer.from(renderManifest(rawContent.toString("utf8"), devConfig));
+  }
+  return rawContent;
 }
 
 async function sendWebResponse(res, response) {

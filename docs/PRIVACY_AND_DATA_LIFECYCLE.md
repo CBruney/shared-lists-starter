@@ -28,10 +28,23 @@ The browser may store:
 
 - Theme preference.
 - Sidebar and onboarding dismissal state.
-- A per-user people autocomplete index in `localStorage`.
-- In-progress UI state while the page is open.
+- List summary surface data in `localStorage`, keyed by signed-in email.
+- List detail data in `sessionStorage`, keyed by signed-in email and list ID.
+- A per-user people autocomplete index in `localStorage`, keyed by signed-in email.
+- In-progress UI state while the page is open, including pending requests and optimistic edits.
 
 The people index is keyed by signed-in email and should contain only people who share a list with that user plus that user's private contacts, when enabled.
+
+Suggested browser-cache lifetimes:
+
+- List summary surface: up to seven days.
+- List detail/session cache: current browser session, with a short freshness window for faster navigation.
+- Shared people autocomplete index: up to 24 hours.
+- Private contacts autocomplete entries: up to 24 hours.
+
+On sign-out or access loss, the app clears private browser state before redirecting or repainting the signed-out screen. That includes list surface keys, list detail keys, people-index keys, pending list-delete timers, in-flight list/detail/people requests, Google Contacts status in memory, and optimistic mutation queues.
+
+The app intentionally keeps non-private UI preferences such as theme choice, sidebar state, and onboarding/tutorial dismissal.
 
 ## Logs
 

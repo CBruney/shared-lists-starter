@@ -375,6 +375,7 @@ function bindEvents() {
   });
   els.copyListLinkButton.addEventListener("click", copyActiveListLink);
   els.settingsButton.addEventListener("click", openSettingsDialog);
+  els.settingsAuthAction.addEventListener("click", handleSettingsAuthAction);
   els.settingsDialog.addEventListener("click", (event) => {
     if (event.target === els.settingsDialog) closeSettingsDialog();
   });
@@ -5149,13 +5150,14 @@ function newClientId(prefix) {
 
 async function apiFetch(path, options = {}) {
   const headers = new Headers(options.headers || {});
+  const method = (options.method || "GET").toUpperCase();
   headers.set("accept", "application/json");
-  if (options.body !== undefined) headers.set("content-type", "application/json");
+  if (options.body !== undefined || !["GET", "HEAD"].includes(method)) headers.set("content-type", "application/json");
   const devUser = currentDevUser();
   if (devUser) headers.set("x-dev-user-email", devUser);
   const timeoutMs = Number.isFinite(options.timeoutMs)
     ? Math.max(0, Number(options.timeoutMs))
-    : (options.method || "GET").toUpperCase() === "GET"
+    : method === "GET"
       ? defaultReadRequestTimeoutMs
       : defaultMutationRequestTimeoutMs;
   const controller = typeof AbortController === "function" ? new AbortController() : null;
@@ -5206,6 +5208,7 @@ async function apiFetch(path, options = {}) {
     const error = new Error("Sign in to refresh lists");
     error.authRequired = true;
     error.authRefreshRequired = true;
+    enterSignedOutState();
     throw error;
   }
   if (!response.ok) {
@@ -5214,6 +5217,7 @@ async function apiFetch(path, options = {}) {
     error.authRequired = response.status === 401;
     error.authRefreshRequired = response.status === 401;
     error.transient = isTransientStatus(response.status);
+    if (error.authRequired) enterSignedOutState();
     throw error;
   }
   return data;
@@ -5257,6 +5261,7 @@ function isAuthRequiredError(error) {
 }
 
 function enterSignedOutState() {
+  clearPrivateBrowserState();
   state.authRequired = true;
   state.authConfirmed = false;
   state.connectionIssue = false;
@@ -5269,6 +5274,60 @@ function enterSignedOutState() {
   state.fastSurfaceHydrated = false;
   els.currentUserLabel.textContent = "Sign in required";
   render();
+}
+
+function handleSettingsAuthAction(event) {
+  if (els.settingsAuthAction.dataset.authAction !== "signout") return;
+  event.preventDefault();
+  clearPrivateBrowserState();
+  window.location.href = signOutUrl();
+}
+
+function clearPrivateBrowserState() {
+  abortPrivateRequests();
+  listDetailCache.clear();
+  listDetailRequests.clear();
+  listSecondaryDetailRequests.clear();
+  completedTaskRequests.clear();
+  peopleIndexRequest = null;
+  taskMutations.clear();
+  pendingListCreates.clear();
+  clearPendingListDeleteTimers();
+  pendingListDeletes.clear();
+  deferredTaskAdoptions.clear();
+  state.peopleIndex = { email: "", entries: [], loaded: false, loadedAt: 0 };
+  state.people = { query: "", suggestions: [], loading: false, open: false, selectedIndex: -1, selected: null };
+  state.googleContacts = defaultGoogleContactsState();
+  removePrivateStorageKeys(window.localStorage);
+  removePrivateStorageKeys(window.sessionStorage);
+}
+
+function clearPendingListDeleteTimers() {
+  for (const pending of pendingListDeletes.values()) {
+    if (pending?.timer) window.clearTimeout(pending.timer);
+  }
+}
+
+function abortPrivateRequests() {
+  for (const request of [...listDetailRequests.values(), ...listSecondaryDetailRequests.values()]) {
+    request.controller?.abort?.();
+  }
+}
+
+function removePrivateStorageKeys(storage) {
+  try {
+    const prefixes = [
+      "sharedLists:listSurface:v1:",
+      "sharedLists:listDetail:v1:",
+      "sharedLists:peopleIndex:v1:",
+    ];
+    for (let index = storage.length - 1; index >= 0; index -= 1) {
+      const key = storage.key(index) || "";
+      if (prefixes.some((prefix) => key.startsWith(prefix))) storage.removeItem(key);
+    }
+  } catch {
+    // Browser storage is best effort; server authorization remains the source of truth.
+  }
 }
 
 function signInUrl() {

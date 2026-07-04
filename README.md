@@ -82,7 +82,7 @@ Edit `shared-lists.config.json` for user-visible and client-side settings:
 }
 ```
 
-Use host environment variables for server-side settings. For local development, copy `.env.example` to `.env`; the dev server loads `.env` automatically. Do not commit real secrets or private deployment IDs. Optional admin and integration surfaces, including access audit, people import, quick-action intake, and private Google Contacts autocomplete, are disabled by config until you turn them on.
+Use host environment variables for server-side settings. For local development, copy `.env.example` to `.env`; the dev server loads `.env` automatically. Do not commit real secrets or private deployment IDs. Optional admin and integration surfaces, including access audit, people import, quick-action intake, and private Google Contacts autocomplete, are disabled by config and readiness gates until you intentionally turn them on. Quick-action intake also requires an explicit origin allowlist when enabled.
 
 Set `publicUrl` and `feedbackEmail` only when you have real values. If `feedbackEmail` is empty, the app hides Feedback and Help/questions.
 
@@ -127,11 +127,16 @@ Set this server-side value before the first production deploy:
 
 ```text
 FIRST_OWNER_EMAILS=
+ALLOW_ANY_FIRST_OWNER=false
 ```
 
-Set `FIRST_OWNER_EMAILS` to the real email address, or comma-separated real email addresses, allowed to create the first list. Leave it blank only if any signed-in user should be allowed to claim the first list while the database is empty.
+Set `FIRST_OWNER_EMAILS` to the real email address, or comma-separated real email addresses, allowed to create the first list. Production setup fails closed when this value is blank.
 
-Then sign in as that email and either create the first list in the app UI or call the setup endpoint. Set `APP_URL` to the deployed app URL and `FIRST_LIST_TITLE` to the real list name before running this command:
+Use `ALLOW_ANY_FIRST_OWNER=true` only for a deliberate local demo or disposable test deployment where any signed-in user may claim the first list while the database is empty.
+
+Then sign in as an allowed email and either create the first list in the app UI or call the setup endpoint through an authenticated host session.
+
+OpenAI Sites API example:
 
 ```bash
 curl -X POST "$APP_URL/api/setup/first-owner" \
@@ -139,7 +144,9 @@ curl -X POST "$APP_URL/api/setup/first-owner" \
   -d "{\"title\":\"$FIRST_LIST_TITLE\"}"
 ```
 
-If no `FIRST_OWNER_EMAILS` value is set, any signed-in user may claim first-owner setup while the database has no lists. Once the first list exists, the setup endpoint returns `409`.
+Run the command from a session or client authenticated as an email in `FIRST_OWNER_EMAILS`. Do not spoof production identity headers.
+
+Once the first list exists, the setup endpoint returns `409`.
 
 You can also claim setup by signing in as an allowed owner and creating the first list from the app UI.
 
@@ -167,7 +174,9 @@ Open the list, tap Share, add the person's email, then copy or send the list lin
 
 ### Can sharing autocomplete use my contacts?
 
-Optionally, yes. Private Google Contacts autocomplete is off by default. If a deployer enables it and a user connects their own Google account in Settings, only that user sees those private suggestions. Everyone can still share by typing a full email address.
+Optionally, yes, but it is intentionally gated right now. Private Google Contacts autocomplete is off by default and should stay off until the large-sync, OAuth, quota, encryption, disconnect, and recovery checks in [`docs/PRIVATE_CONTACTS.md`](docs/PRIVATE_CONTACTS.md) pass against real D1.
+
+Everyone can still share by typing a full email address.
 
 The shared people directory is scoped to people who already share at least one list with the signed-in user. The app does not send the full global user table to every browser.
 
@@ -196,6 +205,7 @@ Important follow-ups before a production Cloudflare release:
 
 - Make the Cloudflare instructions executable.
 - Test the production system, not just its components.
+- Complete the Cloudflare sign-in/sign-out, security-header, migration, smoke-test, and rollback gates.
 - Add a hosted demo only after it has dedicated non-production storage and synthetic data.
 
 ### Which license does this use?
@@ -232,5 +242,7 @@ git diff --check
 Never commit `.env`, `wrangler.toml` with real IDs, access tokens, production database exports, private emails, or deployment credentials.
 
 For public repository settings, see [`docs/GITHUB_SETUP.md`](docs/GITHUB_SETUP.md).
+
+For a linked documentation map, see [`docs/INDEX.md`](docs/INDEX.md).
 
 For questions, use GitHub Discussions or the Help/questions action when a deployer has configured a support email.

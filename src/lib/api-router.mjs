@@ -29,6 +29,7 @@ export async function routeApiRequest(
     adminEmails = ADMIN_EMAILS,
     firstOwnerEmails = new Set(),
     firstOwnerSetupEnabled = true,
+    allowAnyFirstOwner = false,
     peopleImportEnabled = true,
     logger = null,
     quickActionIntegrationEnabled = false,
@@ -120,6 +121,8 @@ export async function routeApiRequest(
       return new Response(null, { status: 204, headers: quickActionCorsHeaders });
     }
 
+    assertStateChangingRequestAllowed(request, path, method);
+
     if (!currentUserEmail) throw new AppError(401, "Authenticated user is required");
     const userEmail = requireValidEmail(currentUserEmail, "current user");
 
@@ -186,6 +189,7 @@ export async function routeApiRequest(
         hasLists,
         firstOwnerEmails,
         firstOwnerSetupEnabled,
+        allowAnyFirstOwner,
       }));
     }
 
@@ -195,7 +199,7 @@ export async function routeApiRequest(
       if (!firstOwnerSetupEnabled) throw new AppError(404, "Not found");
       const hasLists = typeof store.hasAnyLists === "function" ? await store.hasAnyLists() : true;
       if (hasLists) throw new AppError(409, "First owner setup is already complete");
-      assertFirstOwnerAllowed(userEmail, firstOwnerEmails);
+      assertFirstOwnerAllowed(userEmail, firstOwnerEmails, { allowAnyFirstOwner });
       const body = await readJson(request);
       const list = await store.createList(userEmail, validateListTitle(body.title || "Shared List"));
       logEntry.list_id = list?.list?.id || "";
@@ -307,7 +311,7 @@ export async function routeApiRequest(
       logEntry.route = "/api/lists";
       logEntry.action = "created_list";
       if (firstOwnerSetupEnabled && typeof store.hasAnyLists === "function" && !(await store.hasAnyLists())) {
-        assertFirstOwnerAllowed(userEmail, firstOwnerEmails);
+        assertFirstOwnerAllowed(userEmail, firstOwnerEmails, { allowAnyFirstOwner });
       }
       const body = await readJson(request);
       const list = await store.createList(userEmail, validateListTitle(body.title));
@@ -562,10 +566,48 @@ export async function routeApiRequest(
 }
 
 export async function readJson(request) {
+  assertJsonContentType(request);
   try {
     return await request.json();
   } catch {
     throw new AppError(400, "Request body must be JSON");
+  }
+}
+
+function assertStateChangingRequestAllowed(request, path, method) {
+  if (!isStateChangingMethod(method)) return;
+  if (isQuickActionIntegrationPath(path)) return;
+
+  const requestOrigin = new URL(request.url).origin;
+  const origin = request.headers.get("origin");
+  if (origin && normalizeOrigin(origin) !== requestOrigin) {
+    throw new AppError(403, "Cross-site requests are not allowed");
+  }
+
+  const fetchSite = String(request.headers.get("sec-fetch-site") || "").toLowerCase();
+  if (fetchSite === "cross-site") {
+    throw new AppError(403, "Cross-site requests are not allowed");
+  }
+
+  assertJsonContentType(request);
+}
+
+function isStateChangingMethod(method) {
+  return !["GET", "HEAD", "OPTIONS"].includes(method);
+}
+
+function assertJsonContentType(request) {
+  const contentType = request.headers.get("content-type") || "";
+  if (!contentType.toLowerCase().includes("application/json")) {
+    throw new AppError(415, "Request content type must be application/json");
+  }
+}
+
+function normalizeOrigin(value) {
+  try {
+    return new URL(value).origin;
+  } catch {
+    return "";
   }
 }
 
@@ -675,17 +717,15 @@ function trimTrailingSlash(path) {
   return path;
 }
 
-const DEFAULT_QUICK_ACTION_INTEGRATION_ORIGINS = [
-];
-
 function isQuickActionIntegrationPath(path) {
   return path === "/api/integrations/quick-actions";
 }
 
 function quickActionIntegrationCorsHeaders(request, configuredOrigins) {
-  const origin = request.headers.get("origin") || "";
-  if (!origin) return new Headers({ "cache-control": "no-store" });
   const allowed = parseQuickActionIntegrationOrigins(configuredOrigins);
+  if (allowed.size === 0) return null;
+  const origin = request.headers.get("origin") || "";
+  if (!origin) return null;
   if (!allowed.has(origin)) return null;
   return new Headers({
     "access-control-allow-origin": origin,
@@ -703,24 +743,28 @@ function parseQuickActionIntegrationOrigins(value) {
     .split(",")
     .map((origin) => origin.trim())
     .filter(Boolean);
-  return new Set(configured.length ? configured : DEFAULT_QUICK_ACTION_INTEGRATION_ORIGINS);
+  return new Set(configured);
 }
 
-function firstOwnerSetupStatus(userEmail, { hasLists, firstOwnerEmails, firstOwnerSetupEnabled }) {
+function firstOwnerSetupStatus(userEmail, { hasLists, firstOwnerEmails, firstOwnerSetupEnabled, allowAnyFirstOwner = false }) {
   const ownerEmails = normalizedEmailSet(firstOwnerEmails);
-  const allowAnySignedInUser = ownerEmails.size === 0;
+  const configured = allowAnyFirstOwner || ownerEmails.size > 0;
   return {
     enabled: Boolean(firstOwnerSetupEnabled),
     has_lists: Boolean(hasLists),
-    ready: Boolean(firstOwnerSetupEnabled && !hasLists),
-    can_claim: Boolean(firstOwnerSetupEnabled && !hasLists && (allowAnySignedInUser || ownerEmails.has(normalizeEmail(userEmail)))),
-    allowed_owner_required: !allowAnySignedInUser,
+    ready: Boolean(firstOwnerSetupEnabled && !hasLists && configured),
+    can_claim: Boolean(firstOwnerSetupEnabled && !hasLists && configured && (allowAnyFirstOwner || ownerEmails.has(normalizeEmail(userEmail)))),
+    allowed_owner_required: !allowAnyFirstOwner,
+    configured,
   };
 }
 
-function assertFirstOwnerAllowed(userEmail, firstOwnerEmails) {
+function assertFirstOwnerAllowed(userEmail, firstOwnerEmails, { allowAnyFirstOwner = false } = {}) {
   const ownerEmails = normalizedEmailSet(firstOwnerEmails);
-  if (ownerEmails.size === 0 || ownerEmails.has(normalizeEmail(userEmail))) return;
+  if (allowAnyFirstOwner || ownerEmails.has(normalizeEmail(userEmail))) return;
+  if (ownerEmails.size === 0) {
+    throw new AppError(503, "First owner setup requires FIRST_OWNER_EMAILS or ALLOW_ANY_FIRST_OWNER=true");
+  }
   throw new AppError(403, "This signed-in user is not allowed to complete first owner setup");
 }
 

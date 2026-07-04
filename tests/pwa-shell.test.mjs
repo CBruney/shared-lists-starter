@@ -6,6 +6,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { promisify } from "node:util";
 import vm from "node:vm";
+import { applyDocumentMetadata, injectSharedListsConfig, renderManifest } from "../scripts/render-client-config.mjs";
 
 const execFileAsync = promisify(execFile);
 
@@ -138,6 +139,14 @@ test("PWA shell build caches only safe static assets", async () => {
   assert.match(app, /Shared Lists help question/);
   assert.match(app, /Show the desktop WebApp install guide/);
   assert.match(app, /dataset\.guideMode/);
+  assert.match(sourceApp, /function clearPrivateBrowserState\(\)/);
+  assert.match(sourceApp, /function enterSignedOutState\(\)\s*\{\s*clearPrivateBrowserState\(\);/);
+  assert.match(sourceApp, /function handleSettingsAuthAction\(/);
+  assert.match(sourceApp, /removePrivateStorageKeys\(window\.localStorage\)/);
+  assert.match(sourceApp, /removePrivateStorageKeys\(window\.sessionStorage\)/);
+  assert.match(sourceApp, /sharedLists:listSurface:v1:/);
+  assert.match(sourceApp, /sharedLists:listDetail:v1:/);
+  assert.match(sourceApp, /sharedLists:peopleIndex:v1:/);
   assert.doesNotMatch(app, /setTimeout\(\(\) => fetchPeopleSuggestions\(query\), 140\)/);
   const sourceStyles = await readFile("src/styles.css", "utf8");
   assert.match(sourceStyles, /:root\[data-theme="dark"\]/);
@@ -159,7 +168,7 @@ test("PWA shell build caches only safe static assets", async () => {
   assert.match(sourceStyles, /\.task-header\s*\{[\s\S]*background:\s*var\(--mobile-header-bg\)/);
   assert.doesNotMatch(sourceStyles, /\.task-header\s*\{[\s\S]*background:\s*rgba\(248,\s*250,\s*253,\s*0\.94\)/);
   assert.match(sourceStyles, /@media \(max-width: 760px\)[\s\S]*\.add-input-wrap\s*\{\s*padding:\s*0 4px 0 10px;/);
-  assert.match(sourceStyles, /@media \(max-width: 760px\)[\s\S]*\.add-input-wrap input\s*\{\s*min-height:\s*44px;\s*padding:\s*0 0 0 8px;/);
+  assert.match(sourceStyles, /@media \(max-width: 760px\)[\s\S]*\.add-input-wrap input\s*\{\s*min-height:\s*44px;\s*padding:\s*0 0 0 14px;/);
   assert.match(sourceStyles, /\.owner-only-label\s*\{\s*display:\s*none;/);
   assert.match(sourceStyles, /grid-template-columns:\s*32px minmax\(0, 1fr\) max-content;/);
   assert.match(sourceStyles, /\.member-row > \.role-chip/);
@@ -221,7 +230,7 @@ test("PWA shell build caches only safe static assets", async () => {
   assert.match(shell, /data-generic-shell="true"/);
   assert.doesNotMatch(shell, /<option value=/);
 
-  assert.equal((await stat("dist/client/app.js")).size < 156_000, true);
+  assert.equal((await stat("dist/client/app.js")).size < 158_000, true);
   assert.equal((await stat("dist/client/styles.css")).size < 56_000, true);
   assert.equal((await stat("dist/client/index.html")).size < 29_500, true);
 
@@ -266,6 +275,37 @@ test("PWA shell build caches only safe static assets", async () => {
   assert.doesNotMatch(configuredIndex, /<https:\/\/lists\.example\.com\/app/);
   assert.equal(configuredManifest.name, "Family Tasks");
   assert.equal(configuredManifest.description, "Private shared lists with list-level permissions.");
+});
+
+test("dev preview rendering uses configured metadata and manifest values", async () => {
+  const config = {
+    appName: "Kitchen Lists & Tasks",
+    publicUrl: "https://lists.example.dev/app",
+    manifestDescription: "Family grocery and task lists.",
+    authProvider: "openai-sites",
+    features: {
+      quickActionBridge: false,
+      accessAudit: false,
+      peopleImport: false,
+      privateGoogleContacts: false,
+    },
+    quickActionBridge: { allowedOrigins: [] },
+  };
+  const devServer = await readFile("scripts/dev-server.mjs", "utf8");
+  assert.match(devServer, /render-client-config\.mjs/);
+  const sourceIndex = await readFile("src/index.html", "utf8");
+  const sourceManifest = await readFile("src/manifest.webmanifest", "utf8");
+  const index = applyDocumentMetadata(injectSharedListsConfig(sourceIndex, config), config);
+  const manifest = JSON.parse(renderManifest(sourceManifest, config));
+
+  assert.match(index, /<title>Kitchen Lists &amp; Tasks<\/title>/);
+  assert.match(index, /aria-label="Kitchen Lists &amp; Tasks"/);
+  assert.match(index, /<h1>Kitchen Lists &amp; Tasks<\/h1>/);
+  assert.match(index, /property="og:url" content="https:\/\/lists\.example\.dev\/app"/);
+  assert.match(index, /property="og:image" content="https:\/\/lists\.example\.dev\/app\/social-preview\.png"/);
+  assert.equal(manifest.name, "Kitchen Lists & Tasks");
+  assert.equal(manifest.short_name, "Shared Lists");
+  assert.equal(manifest.description, "Family grocery and task lists.");
 });
 
 test("service worker never intercepts page navigation", async () => {

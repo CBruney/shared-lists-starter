@@ -22,7 +22,7 @@ You are working in the public Shared Lists Starter repository.
 ## Normal Commands
 
 ```bash
-npm install
+npm ci
 npm run dev
 npm test
 npm run build

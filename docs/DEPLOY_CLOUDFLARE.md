@@ -14,6 +14,8 @@ Not done yet:
 - Pin and document the supported Wrangler version.
 - Confirm `wrangler.toml.example` matches current Wrangler migration configuration.
 - Replace OpenAI Sites sign-in and sign-out paths with provider-correct Cloudflare behavior.
+- Confirm `assets.run_worker_first` behavior for API routes and static assets.
+- Add security headers for CSP, `frame-ancestors`, `nosniff`, referrer policy, and permissions policy.
 - Run a disposable production-like Worker + D1 rehearsal that covers migrations, authentication, first-owner setup, list permissions, deployment, and rollback.
 
 Use the steps below as a checklist for what the lane should do, not as a guaranteed copy-paste deployment guide.
@@ -59,6 +61,7 @@ Use the steps below as a checklist for what the lane should do, not as a guarant
    CLOUDFLARE_ACCESS_TEAM_DOMAIN = ""
    CLOUDFLARE_ACCESS_AUD = ""
    FIRST_OWNER_EMAILS = ""
+   ALLOW_ANY_FIRST_OWNER = "false"
    ```
 
    Use the real team domain and audience value from the Cloudflare Access application. Set `FIRST_OWNER_EMAILS` to the real email address, or comma-separated real email addresses, allowed to create the first list.
@@ -109,3 +112,14 @@ Use the steps below as a checklist for what the lane should do, not as a guarant
 The Worker verifies the Cloudflare Access JWT before trusting an email address. Set both the team domain and application audience value.
 
 Do not commit `wrangler.toml` if it contains real account, database, domain, or policy values.
+
+## Release Gates
+
+Do not advertise Cloudflare support as complete until all of these are true:
+
+- `wrangler` is added to dev dependencies or otherwise pinned to a documented version.
+- `npm` scripts exist for build, deploy, migrations, smoke test, and rollback.
+- `wrangler.toml.example` is confirmed against the pinned Wrangler version, including `migrations_dir` and asset routing.
+- Cloudflare sign-in and sign-out behavior is provider-correct and covered by tests or a rehearsal.
+- The Worker sends production security headers.
+- A disposable Worker + D1 rehearsal has passed migrations, auth, first-owner restrictions, list permissions, deploy, smoke, and rollback.

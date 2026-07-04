@@ -18,6 +18,7 @@ export default {
         adminEmails: adminEmails(env.ACCESS_AUDIT_ADMINS),
         firstOwnerEmails: adminEmails(env.FIRST_OWNER_EMAILS),
         firstOwnerSetupEnabled: env.ENABLE_FIRST_OWNER_SETUP !== "false",
+        allowAnyFirstOwner: env.ALLOW_ANY_FIRST_OWNER === "true",
         peopleImportEnabled: env.ENABLE_PEOPLE_IMPORT === "true",
         quickActionIntegrationEnabled: env.QUICK_ACTION_INTEGRATION_ENABLED === "true",
         quickActionIntegrationOrigins: env.QUICK_ACTION_INTEGRATION_ORIGINS,
@@ -48,6 +49,7 @@ export default {
         adminEmails: adminEmails(env.ACCESS_AUDIT_ADMINS),
         firstOwnerEmails: adminEmails(env.FIRST_OWNER_EMAILS),
         firstOwnerSetupEnabled: env.ENABLE_FIRST_OWNER_SETUP !== "false",
+        allowAnyFirstOwner: env.ALLOW_ANY_FIRST_OWNER === "true",
         peopleImportEnabled: env.ENABLE_PEOPLE_IMPORT === "true",
         quickActionIntegrationEnabled: env.QUICK_ACTION_INTEGRATION_ENABLED === "true",
         quickActionIntegrationOrigins: env.QUICK_ACTION_INTEGRATION_ORIGINS,
@@ -102,7 +104,7 @@ function adminEmails(value) {
 
 function identityOptions(env) {
   return {
-    authProvider: env.SHARED_LISTS_AUTH_PROVIDER || "openai-sites",
+    authProvider: env.SHARED_LISTS_AUTH_PROVIDER,
     defaultLocalUserEmail: env.DEV_DEFAULT_USER_EMAIL || "local-user@local.test",
     cloudflareAccess: {
       teamDomain: env.CLOUDFLARE_ACCESS_TEAM_DOMAIN,
